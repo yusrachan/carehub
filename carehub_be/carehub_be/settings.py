@@ -52,7 +52,13 @@ REST_FRAMEWORK = {
     )
 }
 
+SIMPLE_JWT = {
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ROTATE_REFRESH_TOKENS': True,
+}
+
 AUTH_USER_MODEL = 'accounts.User'
+DATA_RETENTION_YEARS = 30
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

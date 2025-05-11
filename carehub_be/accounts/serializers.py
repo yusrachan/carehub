@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, UserOfficeRole
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -16,3 +16,15 @@ class RegisterSerializer(serializers.ModelSerializer):
             surname=validated_data.get('surname', ''),
         )
         return user
+
+class UserOfficeRoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserOfficeRole
+        fields = ['office_id', 'role']
+
+class UserSerializer(serializers.ModelSerializer):
+    roles = UserOfficeRoleSerializer(source='userofficerole_set', many=True)
+    
+    class Meta:
+        model = User
+        fields = ['id', 'name', 'email', 'roles', 'surname']
