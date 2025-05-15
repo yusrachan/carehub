@@ -37,13 +37,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'patients',
     'accounts',
     'offices',
     'appointments',
     'invoices',
     'subscriptions',
-    'rest_framework',
+    'billing',
+    'prescriptions',
 ]
 
 REST_FRAMEWORK = {
