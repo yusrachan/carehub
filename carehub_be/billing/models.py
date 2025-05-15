@@ -1,5 +1,4 @@
 from django.db import models
-from appointments.models import Appointment
 
 class PathologyCategory(models.Model):
     code = models.CharField(max_length=10, unique=True)
@@ -17,7 +16,6 @@ class PathologyDetail(models.Model):
     honoraire_presta = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
     honoraire_depla = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
     honoraire_dossier = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
-    honoraire_total = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
 
     reimbursement_not_bim = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
     reimbursement_bim = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
