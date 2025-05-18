@@ -66,3 +66,20 @@ class Appointment(models.Model):
             "remboursement": pathology_detail.reimbursement_bim if is_bim else pathology_detail.reimbursement_non_bim,
             "tiers_payant": pathology_detail.tm_bim if is_bim else pathology_detail.tm_not_bim,
         }
+    
+    def finalize_and_create_invoice(self, practitioner, due_date):
+        """
+        Marque le rdv comme completed et génère automatiquement la facture associée.
+        """
+        from invoices.models import Invoice
+
+        self.status = 'completed'
+        self.save()
+
+        if not hasattr(self, 'invoice'):
+            Invoice.objects.create(
+                patient=self.patient,
+                practitioner=practitioner,
+                appointment=self,
+                due_date=due_date
+            )
