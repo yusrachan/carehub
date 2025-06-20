@@ -1,10 +1,14 @@
 from django.shortcuts import render
+from django.contrib.auth.models import User
+from django.db import transaction
 from rest_framework import generics, status, permissions
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User
+from offices.models import Office
+from .models import User, UserOfficeRole
 from .serializers import RegisterSerializer, UserSerializer
 
 class RegisterView(generics.CreateAPIView):
@@ -48,3 +52,46 @@ class MeView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+    
+class RegisterFullAccount(APIView):
+    permission_classes = [AllowAny]
+
+    @transaction.atomic
+    def post(self, request):
+        data = request.data
+
+        user = User.objects.create_user(
+            email=data['email'],
+            password=data['password'],
+            name=data['name'],
+            surname=data['surname'],
+        )
+
+        office = Office.objects.create(
+            name=data['office_name'],
+            bce_number=data['bce_number'],
+            street=data['street'],
+            number_street=data['number_street'],
+            box=data['box'],
+            zipcode=data['zipcode'],
+            city=data['city'],
+            plan=data['plan'],
+        )
+
+        UserOfficeRole.objects.create(user=user, office=office, role='manager')
+
+        return Response({"message": "Inscription réussie"}, status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    data = request.data
+    if User.objects.filter(email=data['email']).exists():
+        return Response({'email': 'E-mail déjà utilisé.'}, status=400)
+    
+    user = User.objects.create_user(
+        username=data['email'],
+        email=data['email'],
+        password=data['password'],
+    )
+    return Response({'message': 'Utilisateur créé avec succès.'}, status=201)

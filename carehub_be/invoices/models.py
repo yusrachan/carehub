@@ -2,7 +2,7 @@ import datetime
 from django.db import models
 from patients.models import Patient
 from accounts.models import User
-from appointments.models import Appointment
+from appointments.models import Agenda
 import datetime
 
 class Invoice(models.Model):
@@ -12,7 +12,7 @@ class Invoice(models.Model):
         ('overdue', 'Overdue'),
     ]
 
-    appointments = models.ManyToManyField(Appointment, on_delete=models.CASCADE, related_name="invoices")
+    agenda = models.ManyToManyField(Agenda, on_delete=models.CASCADE, related_name="invoices")
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     practitioner = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'userofficerole__role': 'practitioner'})
     sending_date = models.DateField(auto_now_add=True)
@@ -28,7 +28,7 @@ class Invoice(models.Model):
         return f"Facture {self.reference_number} - {self.patient} - {self.amount}€ - {self.state}"
     
     def calculate_total_amount(self):
-        total = sum([appt.honoraires_total or 0 for appt in self.appointments.all()])
+        total = sum([appt.honoraires_total or 0 for appt in self.agenda.all()])
         self.amount = total
         return total
     

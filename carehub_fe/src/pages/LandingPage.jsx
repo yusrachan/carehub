@@ -16,7 +16,7 @@ export default function LandingPage() {
                     <Link to="/login" className="px-6 py-2 text-gray-800 bg-white rounded-xl shadow">
                     Se connecter                
                     </Link>
-                    <Link to="/register" className="px-6 py-2 bg-[#466896] text-white rounded-xl shadow">
+                    <Link to="/register-choice" className="px-6 py-2 bg-[#466896] text-white rounded-xl shadow">
                     S'inscrire
                     </Link>
                     <Link to="/register-office" className="px-6 py-2 bg-[#466896] text-white rounded-xl shadow">

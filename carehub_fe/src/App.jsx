@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import RegisterOffice from "./pages/RegisterOffice";
 import RegistrationSuccess from "./pages/RegistrationSuccess";
 import RegistrationError from "./pages/RegistrationError";
+import SignUpChoiceForm from "./components/SignUpChoiceForm";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/register-office" element={<RegisterOffice />} />
+          <Route path="/register-choice" element={<SignUpChoiceForm />} />
           <Route path="/register-success" element={<RegistrationSuccess />} />
           <Route path="/register-error" element={<RegistrationError />} />
         </Route>

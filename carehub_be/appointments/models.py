@@ -6,16 +6,16 @@ from billing.models import PathologyDetail
 from prescriptions.models import Prescription
 from prescriptions.utils import get_session_number
 
-class Appointment(models.Model):
+class Agenda(models.Model):
     STATUS_CHOICES = [
         ('scheduled', 'Scheduled'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     ]
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="appointments")
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="agenda")
     practitioner = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'userofficerole__role': 'practitioner'})
-    prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE, related_name="appointments", null=True, blank=True)
+    prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE, related_name="agenda", null=True, blank=True)
     office = models.ForeignKey(Office, on_delete=models.CASCADE)
     app_date = models.DateTimeField()
     reason = models.TextField(blank=True, null=True)
@@ -37,7 +37,7 @@ class Appointment(models.Model):
         return f"RDV {self.app_date} - {self.patient} avec {self.practitioner}"
     
     def calculate_pricing(self, is_bim: bool):
-        nb_sessions_done = Appointment.objects.filter(
+        nb_sessions_done = Agenda.objects.filter(
             patient=self.patient,
             prescription=self.prescription
         ).count()
@@ -80,6 +80,6 @@ class Appointment(models.Model):
             Invoice.objects.create(
                 patient=self.patient,
                 practitioner=practitioner,
-                appointment=self,
+                agenda=self,
                 due_date=due_date
             )

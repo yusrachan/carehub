@@ -15,12 +15,13 @@ const schema = yup.object().shape({
     surname: yup.string().required("Nom requis"),
     niss: yup.string().matches(/^\d{11}$/, "Le NISS doit contenir 11 chiffres").required("NISS requis"),
     role: yup.string().required("Rôle requis"),
-    inami: yup.string().when("role", (roleValue, schema) => {
-      return roleValue === "praticien"
-        ? schema
-          .matches(/^\d{11}$/, "L’INAMI doit contenir 11 chiffres")
-          .required("INAMI requis")
-        : schema.notRequired();
+    inami: yup.string().when("role", {
+      is: (val) => ["praticien", "manager"].includes(val),
+      then: (schema) =>
+        schema
+           .matches(/^\d{11}$/, "L’INAMI doit contenir 11 chiffres")
+           .required("INAMI requis"),
+      otherwise: (schema) => schema.notRequired(),
     }),
     email: yup.string().email("E-mail invalide").required("E-mail requis"),
     password: yup.string().min(7, "Minimum 7 caractères").required("Mot de passe requis"),
@@ -67,6 +68,11 @@ export default function Register() {
   const onSubmit = async (data) => {
     console.log("onsub appelé avec ", data)
     setAccountData(data)
+    if (data.choice === "create") {
+      navigate("/register-office", { state: { accountData: data }})
+    } else {
+      navigate("/register-success")
+    }
     setStep(2)
     // } else if (step === 2) {
     //   try {
@@ -122,6 +128,7 @@ export default function Register() {
                     {...register("role")}
                     className="w-full px-4 py-2 border rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#466896]"
                   >
+                    <option value="">— Sélectionner votre rôle —</option>
                     <option value="manager">Manager</option>
                     <option value="praticien">Kinésithérapeute</option>
                     <option value="secretaire">Secrétaire</option>

@@ -49,26 +49,29 @@ export default function RegisterOffice() {
   });
   
   const onSubmit = async (officeData) => {
+    console.log("ONSUB ", officeData, " + accountdata ", accountData)
     const payload = { ...accountData, ...officeData };
     try {
-        const response = await axios.post("/api/create-stripe-session/", payload);
-        if (response.data.url){
-            window.location.href = response.data.url;
-        } 
+        await axios.post("/api/accounts/register-full-account", payload);
+        navigate("/login") 
     } catch (error) {
       const serverErrors = error?.response?.data;
       if (serverErrors) {
             Object.keys(serverErrors).forEach((field) => {
-            setError(field, { type: "server", message: serverErrors[field] });
+                setError(field, { type: "server", message: serverErrors[field] });
             });
         }
     }
   }
 
+  const onError = (formErrors) => {
+    console.log(" ON ERROR ", formErrors)
+  }
+
     return (
         <div className="flex flex-col w-screen items-center justify-center bg-[#D9E1E8] py-20">
             <form 
-                onSubmit={handleSubmit(onSubmit)} 
+                onSubmit={handleSubmit(onSubmit, onError)} 
                 className="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
                 <h2 className="text-2xl text-center font-bold text-[#466896] mb-4">Création du cabinet</h2>
 

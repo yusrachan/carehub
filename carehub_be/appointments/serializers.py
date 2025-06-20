@@ -1,24 +1,24 @@
 from rest_framework import serializers
-from .models import Appointment
+from .models import Agenda
 
-class AppointmentSerializer(serializers.ModelSerializer):
+class AgendaSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Appointment
+        model = Agenda
         fields = '__all__'
     
     def create(self, validated_data):
-        appointment = Appointment.objects.create(**validated_data)
+        agenda = Agenda.objects.create(**validated_data)
         is_bim = self.context['request'].data.get('is_bim', False)
 
-        pricing = appointment.calculate_pricing(is_bim=is_bim)
+        pricing = agenda.calculate_pricing(is_bim=is_bim)
         if pricing is None:
             raise serializers.ValidationError("Impossible de calculer la tarification. Vérifiez les données.")
 
-        appointment.code_prestation = pricing["code_prestation"]
-        appointment.code_dossier = pricing["code_dossier"]
-        appointment.honoraires_total = pricing["honoraires_total"]
-        appointment.remboursement = pricing["remboursement"]
-        appointment.tiers_payant = pricing["tiers_payant"]
-        appointment.save()
+        agenda.code_prestation = pricing["code_prestation"]
+        agenda.code_dossier = pricing["code_dossier"]
+        agenda.honoraires_total = pricing["honoraires_total"]
+        agenda.remboursement = pricing["remboursement"]
+        agenda.tiers_payant = pricing["tiers_payant"]
+        agenda.save()
 
-        return appointment
+        return agenda

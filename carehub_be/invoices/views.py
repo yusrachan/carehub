@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Invoice
 from patients.models import Patient
-from appointments.models import Appointment
+from appointments.models import Agenda
 from .serializers import InvoiceSerializer
 
 class InvoiceViewSet(viewsets.ModelViewSet):
@@ -30,7 +30,7 @@ class CreateInvoiceView(APIView):
         except Patient.DoesNotExist:
             return Response({"error": "Patient introuvable."}, status=404)
         
-        appointments = Appointment.objects.filter(id__in=appointment_ids, patient=patient)
+        appointments = Agenda.objects.filter(id__in=appointment_ids, patient=patient)
 
         if not appointments.exists():
             return Response({"error": "No valid appointments found for this patient."}, status=404)

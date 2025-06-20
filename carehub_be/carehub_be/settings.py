@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'patients',
     'accounts',
     'offices',
-    'appointments',
+    'agenda',
     'invoices',
     'subscriptions',
     'billing',
@@ -58,6 +58,8 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'ROTATE_REFRESH_TOKENS': True,
 }
+
+STRIPE_SECRET_KEY = "sk_test_51OVEizFtm1LR4NNUnbQJ7fV2h5xi7m11joWjTWJZ217FJAwJ9a6uWCOYMLn2qSFUYEbo8wjxlkfmgTEZyBOoCVzZ00PGCV86Qd"
 
 AUTH_USER_MODEL = 'accounts.User'
 DATA_RETENTION_YEARS = 30
