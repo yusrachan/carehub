@@ -5,6 +5,7 @@ from offices.views import register_office
 from accounts.views import RegisterView
 
 urlpatterns = [
+    path('api/', include('accounts.urls')),
     path('admin/', admin.site.urls),
     path('register/', RegisterView.as_view(), name='register'),
     path('register-office/', register_office, name='register_office'),

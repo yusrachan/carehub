@@ -1,6 +1,9 @@
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import axios from "axios";
 
 const schema = yup.object().shape({
     email: yup.string().email("Email invalide").required("Email requis"),
@@ -8,16 +11,38 @@ const schema = yup.object().shape({
 });
 
 export default function Login() {
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
+    const navigate = useNavigate()
+
+    useEffect(() => {
+        const token = localStorage.getItem("access_token")
+        if (token) {
+            axios.defaults.headers.common["Authorization"] = `Bearer ${token}`
+            navigate("/dashboard")
+        }
+    }, [navigate])
+
+    const { 
+        register, handleSubmit, setError, formState: { errors, isSubmitting },
     } = useForm({
         resolver: yupResolver(schema),
     });
 
-    const onSubmit = (data) => {
-        console.log("Données du formulaire : ", data)
+    const onSubmit = async (data) => {
+        try {
+            const res = await axios.post("/api/login/", {
+                email: data.email,
+                password: data.password,
+            })
+            localStorage.setItem("access_token", res.data.access)
+            localStorage.setItem("refresh_token", res.data.refresh)
+            axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.access}`
+            navigate("/dashboard")
+        } catch (err) {
+            setError("password", {
+                type: "server",
+                message: err.response?.status === 401 ? "Identifiants invalides" : "Une erreur est survenue. Réessayez."
+            })
+        }
     };
 
     return(
@@ -53,10 +78,11 @@ export default function Login() {
 
                 <button
                 type="submit"
+                disabled={isSubmitting}
                 className="w-full bg-[#466896] text-white py-2 rounded-lg hover:bg-[#3a5870] transition">
-                Se connecter
+                {isSubmitting ? "Connexion..." : "Se connecter"}
                 </button>
             </form>
         </div>
-  );
+    );
 }

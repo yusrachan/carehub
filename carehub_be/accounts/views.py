@@ -60,6 +60,7 @@ class RegisterFullAccount(APIView):
     def post(self, request):
         data = request.data
 
+        #Creation of User
         user = User.objects.create_user(
             email=data['email'],
             password=data['password'],
@@ -67,20 +68,23 @@ class RegisterFullAccount(APIView):
             surname=data['surname'],
         )
 
+        #Creation of Office
         office = Office.objects.create(
             name=data['office_name'],
             bce_number=data['bce_number'],
             street=data['street'],
             number_street=data['number_street'],
-            box=data['box'],
+            box=data.get('box', ''),
             zipcode=data['zipcode'],
             city=data['city'],
+            email=data['email'],
             plan=data['plan'],
         )
 
         UserOfficeRole.objects.create(user=user, office=office, role='manager')
 
-        return Response({"message": "Inscription réussie"}, status=status.HTTP_201_CREATED)
+        refresh =  RefreshToken.for_user(user)
+        return Response({'refresh': str(refresh), 'access': str(refresh.access_token)}, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])

@@ -36,8 +36,6 @@ def register_office(request):
         return JsonResponse({'email': 'Email déjà utilisé.'}, status=400)
     if Office.objects.filter(bce_number=data['bce_number']).exists():
         return JsonResponse({'bce_number': 'Numéro BCE déjà utilisé.'}, status=400)
-    if Office.objects.filter(phone=data['phone']).exists():
-        return JsonResponse({'phone': 'Numéro de téléphone déjà utilisé.'}, status=400)
     
     office = Office.objects.create(
         name=data['name'],
@@ -47,8 +45,6 @@ def register_office(request):
         box=data.get['box', ''],
         zipcode=data['zipcode'],
         email=data['email'],
-        phone=data['phone'],
-        name=data['name'],
         is_paid=False,
         registration_token=get_random_string(50)
     )

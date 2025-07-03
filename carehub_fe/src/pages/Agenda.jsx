@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock } from "lucide-react";
 
-const CalendarPage = () => {
+const AgendaPage = () => {
     const [date, setDate] = useState(new Date())
     const [currentWeek, setCurrentWeek] = useState(new Date())
 
@@ -139,4 +139,4 @@ const CalendarPage = () => {
     );
 }
 
-export default CalendarPage
+export default AgendaPage

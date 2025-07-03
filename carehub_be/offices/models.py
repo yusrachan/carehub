@@ -11,7 +11,6 @@ class Office(models.Model):
     zipcode = models.CharField(max_length=10)
     city = models.CharField(max_length=100)
     email = models.EmailField(max_length=255)
-    phone = models.CharField(max_length=20)
     is_paid = models.BooleanField(default=False)
     registration_token = models.CharField(max_length=100, blank=True, null=True)
     PLAN_CHOICES = [
@@ -26,10 +25,8 @@ class Office(models.Model):
     def __str__(self):
         return self.name
     
-    def validate_office_data(bce_number, email, phone):
+    def validate_office_data(bce_number, email):
         if Office.objects.filter(bce_number=bce_number).exists():
             raise ValidationError("Ce numéro BCE est déjà enregistre.")
         if Office.objects.filter(email=email).exists():
             raise ValidationError("Cet email est déjà utilisé.")
-        if Office.objects.filter(phone=phone).exists():
-            raise ValidationError("Cet numéro de téléphone est déjà utilisé.")

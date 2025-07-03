@@ -2,7 +2,7 @@ import datetime
 from django.db import models
 from patients.models import Patient
 from accounts.models import User
-from appointments.models import Agenda
+from agenda.models import Agenda
 import datetime
 
 class Invoice(models.Model):
@@ -12,7 +12,7 @@ class Invoice(models.Model):
         ('overdue', 'Overdue'),
     ]
 
-    agenda = models.ManyToManyField(Agenda, on_delete=models.CASCADE, related_name="invoices")
+    agenda = models.ManyToManyField(Agenda, related_name="invoices")
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     practitioner = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'userofficerole__role': 'practitioner'})
     sending_date = models.DateField(auto_now_add=True)

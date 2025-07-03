@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Invoice
 from patients.models import Patient
-from appointments.models import Agenda
+from agenda.models import Agenda
 from .serializers import InvoiceSerializer
 
 class InvoiceViewSet(viewsets.ModelViewSet):

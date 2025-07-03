@@ -25,7 +25,6 @@ export default function LandingPage() {
                 </div>
             </header>
 
-            {/* Main Section */}
             <main className="container mx-auto px-4 py-16 text-center">
                 <h2 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">Gérez votre cabinet de <br />
                     <span className="bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
@@ -68,7 +67,7 @@ export default function LandingPage() {
                         </CardHeader>
                         <CardContent className="text-center">
                         <CardDescription className="text-gray-600">
-                            Agenda partagé, prise de rendez-vous en ligne et gestion des créneaux
+                            Calendrier partagé, prise de rendez-vous en ligne et gestion des créneaux
                         </CardDescription>
                         </CardContent>
                     </Card>
