@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import axios from "axios";
 
 const schema = yup.object().shape({
-    email: yup.string().email("Email invalide").required("Email requis"),
+    email: yup.string().email("E-mail invalide").required("E-mail requis"),
     password: yup.string().min(7, "Minimum 7 caractères").required("Mot de passe requis"),
 });
 
@@ -54,7 +54,7 @@ export default function Login() {
 
                 <div className="mb-4">
                 <label className="block text-[#333] mb-2" htmlFor="email">
-                    Email
+                    E-mail
                 </label>
                 <input
                     type="email"

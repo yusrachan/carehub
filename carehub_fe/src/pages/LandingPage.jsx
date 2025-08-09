@@ -6,7 +6,6 @@ import { Heart, Users, Calendar, FileText, Shield, Star } from "lucide-react";
 export default function LandingPage() {
     return(
         <div className="flex flex-col w-screen min-h-screen bg-[#D9E1E8] text-[#333333]">
-            {/* Header */}
             <header className="flex justify-between items-center p-6 shadow-md bg-white">
                 <div className="flex items-center space-x-3">
                 <img src="/images/logo.png" alt="CareHub Logo" className="w-12 h-12" />
@@ -16,11 +15,8 @@ export default function LandingPage() {
                     <Link to="/login" className="px-6 py-2 text-gray-800 bg-white rounded-xl shadow">
                     Se connecter                
                     </Link>
-                    <Link to="/register-choice" className="px-6 py-2 bg-[#466896] text-white rounded-xl shadow">
+                    <Link to="/register" className="px-6 py-2 bg-[#466896] text-white rounded-xl shadow">
                     S'inscrire
-                    </Link>
-                    <Link to="/register-office" className="px-6 py-2 bg-[#466896] text-white rounded-xl shadow">
-                    S'inscrire cab
                     </Link>
                 </div>
             </header>
@@ -32,7 +28,7 @@ export default function LandingPage() {
                     </span> en toute simplicité
                 </h2>
                 <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-                CareHub est la solution tout-en-un pour gérer vos patients, rendez-vous et factures, de manière rapide, sécurisée et efficace.
+                    CareHub est la solution tout-en-un pour gérer vos patients, rendez-vous et factures, de manière rapide, sécurisée et efficace.
                 </p>
                 <Link to="/register" className="bg-gradient-to-r from-blue-600 to-green-600 text-white hover:from-blue-700 hover:to-green-700 px-8 py-6 text-lg rounded-xl">
                 Commencer maintenant

@@ -16,10 +16,10 @@ export default function Sidebar() {
     { to: "/patients", label: "Patients" },
     { to: "/agenda", label: "Calendrier" },
     { to: "/invoices", label: "Factures" },
+    { to: "/team", label: "Équipe" },
   ];
 
   const handleSignOut = () => {
-    console.log("🔒 Déconnexion déclenchée");
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
     delete axios.defaults.headers.common["Authorization"]

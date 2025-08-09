@@ -1,3 +1,5 @@
+from datetime import timezone
+import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 
@@ -22,6 +24,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True, max_length=100)
     name = models.CharField(max_length=50)
     surname = models.CharField(max_length=50)
+    inami = models.CharField(max_length=11, unique=True, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
@@ -46,4 +49,25 @@ class UserOfficeRole(models.Model):
 
     class Meta:
         unique_together = ('user', 'office')
+
+class Invitation(models.Model):
+    ROLE_CHOICES = [
+        ('manager', 'Manager'),
+        ('practitioner', 'Practitioner'),
+        ('secretary', 'Secretary'),
+    ]
+    email = models.EmailField()
+    office = models.ForeignKey('offices.Office', on_delete=models.CASCADE)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    token = models.CharField(max_length=64, unique=True, default=uuid.uuid4)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    name = models.CharField(max_length=50, blank=True)
+    surname = models.CharField(max_length=50, blank=True)
+
+    def is_valid(self):
+        return (not self.used) and (self.expires_at > timezone.now())
     
+    def __str__(self):
+        return f"Invitation {self.email} for {self.office}"
