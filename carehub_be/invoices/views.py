@@ -1,3 +1,6 @@
+import datetime
+from io import BytesIO
+from django.http import HttpResponse
 from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
@@ -7,6 +10,11 @@ from .models import Invoice
 from patients.models import Patient
 from agenda.models import Agenda
 from .serializers import InvoiceSerializer
+from rest_framework.decorators import api_view, permission_classes
+from django.shortcuts import get_object_or_404
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+
 
 class InvoiceViewSet(viewsets.ModelViewSet):
     queryset = Invoice.objects.all()
@@ -40,7 +48,7 @@ class CreateInvoiceView(APIView):
             practitioner=practitioner,
             due_date=due_date
         )
-        invoice.appointments.set(appointments)
+        invoice.agenda.set(appointments)
         invoice.calculate_total_amount()
         invoice.save()
 
@@ -50,3 +58,39 @@ class CreateInvoiceView(APIView):
             "total_amount": invoice.amount,
             "state": invoice.state
         }, status=201)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_paid(request, pk):
+    invoice = get_object_or_404(Invoice, pk=pk)
+    invoice.state = 'paid'
+    invoice.paid_date = datetime.date.today()
+    invoice.save(update_fields=['state', 'paid_date'])
+    return Response({"status": "paid"})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_invoice(request, pk):
+    invoice = get_object_or_404(Invoice, pk=pk)
+
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(50, 800, f"Facture {invoice.reference_number}")
+    c.setFont("Helvetica", 12)
+    c.drawString(50, 770, f"Patient : {invoice.patient}")
+    c.drawString(50, 750, f"Montant : {invoice.amount}€")
+    c.drawString(50, 730, f"État : {invoice.state}")
+    c.drawString(50, 710, f"Date d'émission : {invoice.sending_date}")
+    c.drawString(50, 690, f"Date d'échéance : {invoice.due_date}")
+    if invoice.paid_date:
+        c.drawString(50, 670, f"Payée : {invoice.paid_date}")
+    c.showPage()
+    c.save()
+
+    pdf = buffer.getvalue()
+    buffer.close()
+
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{invoice.reference_number}.pdf"'
+    return response

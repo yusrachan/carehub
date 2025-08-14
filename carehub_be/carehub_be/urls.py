@@ -9,8 +9,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('register/', RegisterView.as_view(), name='register'),
     path('register-office/', register_office, name='register_office'),
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/', include('accounts.urls')),
     path('api/patients/', include('patients.urls')),
     path('api/offices/', include('offices.urls')),
@@ -18,4 +18,5 @@ urlpatterns = [
     path('api/subscriptions/', include('subscriptions.urls')),
     path('api/invoices/', include('invoices.urls')),
     path('api/prescriptions/', include('prescriptions.urls')),
+    path('api/settings/', include('user_settings.urls')),
 ]

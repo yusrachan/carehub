@@ -14,7 +14,18 @@ class PatientViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Patient.objects.filter(is_deleted=False)
+        user = self.request.user
+
+        if user.userofficerole.role in ["manager", "secretary"]:
+            return Patient.objects.filter(office__in=user.offices.all())
+        
+        elif user.userofficerole.role == "practitioner":
+            own_patients = Patient.objects.filter(agenda__practitioner=user)
+            authorized_patients = Patient.objects.filter(patientaccess__practitioner=user, patientaccess__granted_by_patient=True)
+            return (own_patients | authorized_patients).distinct()
+        
+        return Patient.objects.none()
+            
     
     @action(detail=True, methods=['delete'], url_path='force-delete')
     def force_delete_patient(self, request, pk=None):

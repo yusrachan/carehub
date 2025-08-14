@@ -4,6 +4,8 @@ import { Euro, Plus, Badge, Eye, Download } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE = "http://localhost:8000"
+
 const DUMMY_INVOICES = [
   {
     id: "INV-001",
@@ -46,32 +48,38 @@ function getStatusBadge(status) {
 
 export default function Invoices() {
     const [invoices] = useState(DUMMY_INVOICES)
-    const navigate = useNavigate
+    const navigate = useNavigate()
 
     const handleNewInvoice = () => {
         navigate("/invoices/new")
     }
-    const handleViewInvoice = (invoiceId) => {
-        navigate(`/invoices/${invoiceId}`)
+    const handleViewInvoice = () => {
+        navigate(`/invoices/${id}`)
     }
-    const handleDownloandInvoice = (invoiceId) => {
-        fetch(`/api/invoices/${invoiceId}/download`, {
-            headers: { "Authorization": `Bearer ${localStorage.getItem("access_token")}`}
-        })
-            .then(res => res.blob())
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob)
-                const a = document.createElement("a")
-                a.href = url;
-                a.download = `${invoiceId}.pdf`
-                a.click()
-                a.remove()
-            })
-            .catch(err => console.error("Erreur téléchargement: ", err))
+    const handleDownloandInvoice = async (id) => {
+        try {
+            const res = await fetch(`${API_BASE}/api/invoices/${id}/download/`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+            });
+            if (!res.ok) throw new Error("Téléchargement impossible.");
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `invoice-${id}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            } 
+        catch (e) {
+            console.error(e);
+            alert(e.message);
+        }
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br via-white to-green-50">
+        <div className="min-h-screen">
             <main className="container mx-auto px-4 py-8">
                 <div className="flex justify-between items-center mb-8">
                     <div>
@@ -114,7 +122,7 @@ export default function Invoices() {
                                             <div className="flex items-center space-x-4">
                                                 <div>
                                                     <h3 className="font-semibold text-gray-900">
-                                                        {invoice.id}
+                                                        {invoice.reference_number}
                                                     </h3>
                                                     <p className="text-sm text-gray-600">{invoice.patient}</p>
                                                 </div>

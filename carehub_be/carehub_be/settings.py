@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import datetime
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -40,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'patients',
     'accounts',
     'offices',
@@ -48,6 +51,7 @@ INSTALLED_APPS = [
     'subscriptions',
     'billing',
     'prescriptions',
+    'user_settings',
 ]
 
 REST_FRAMEWORK = {
@@ -60,8 +64,11 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=7),
     'BLACKLIST_AFTER_ROTATION': True,
     'ROTATE_REFRESH_TOKENS': True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 STRIPE_SECRET_KEY = "sk_test_51OVEizFtm1LR4NNUnbQJ7fV2h5xi7m11joWjTWJZ217FJAwJ9a6uWCOYMLn2qSFUYEbo8wjxlkfmgTEZyBOoCVzZ00PGCV86Qd"
@@ -80,7 +87,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
 CORS_ALLOW_ALL_ORIGINS = True
+CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
 
 ROOT_URLCONF = 'carehub_be.urls'
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Plus, Search, Grid3X3, List } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { TeamStatsCard } from "../components/TeamStatsCard";
+// import { TeamStatsCard } from "../components/TeamStatsCard";
 import AddCollaborator from "../components/AddCollaborator"; 
 
 export default function TeamPage({ officeId, userRole }) {

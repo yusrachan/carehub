@@ -17,6 +17,7 @@ export default function Sidebar() {
     { to: "/agenda", label: "Calendrier" },
     { to: "/invoices", label: "Factures" },
     { to: "/team", label: "Équipe" },
+    { to: "/settings", label: "Paramètres" },
   ];
 
   const handleSignOut = () => {

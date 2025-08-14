@@ -5,8 +5,14 @@ from django.utils import timezone
 from offices.models import Office
 
 class Patient(models.Model):
+    GENDER_CHOICES = [
+        ('M', 'Homme'),
+        ('F', 'Femme'),
+        ('O', 'Autre'),
+    ]
     name = models.CharField(max_length=50)
     surname = models.CharField(max_length=50)
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True, null=True)
     birth_date = models.DateField()
     street = models.CharField(max_length=255)
     street_number = models.CharField(max_length=10)
@@ -22,15 +28,19 @@ class Patient(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def full_name(self):
+        return f"{self.name} {self.surname}".strip()
+
 
     def __str__(self):
-        return f"{self.name} {self.surname}"
+        return self.full_name
     
     def anonymize(self):
         self.name = 'Anonymized'
         self.surname = f'Patient_{self.id}'
         self.email = None
-        self.phone = None
+        self.telephone = None
         self.street = None
         self.street_number = None
         self.box = None
@@ -52,3 +62,15 @@ class PatientOffice(models.Model):
 
     def __str__(self):
         return f"{self.patient} - {self.office}"
+
+class PatientAccess(models.Model):
+    patient = models.ForeignKey('patients.Patient', on_delete=models.CASCADE)
+    practitioner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, limit_choices_to={'userofficerole__role': 'practitioner'})
+    granted_by_patient = models.BooleanField(default=False)
+    valid_until = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        unique_together = ('patient', 'practitioner')
+    
+    def __str__(self):
+        return f"{self.patient} -> {self.practitioner} (Autorisé: {self.granted_by_patient})"
