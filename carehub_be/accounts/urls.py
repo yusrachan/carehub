@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import ProfileView, LogoutView, MeView, invite_user, office_members, register_user, check_inami, invite_existing_user, RegisterFullAccount
 
@@ -14,4 +14,5 @@ urlpatterns = [
     path('invite-user/', invite_user, name='invite-user'),
     path('invite-existing-user/', invite_existing_user, name='invite-existing-user'),
     path('me/', MeView.as_view(), name='me'),
+    path('api/subscriptions/', include('subscriptions.urls')),
 ]

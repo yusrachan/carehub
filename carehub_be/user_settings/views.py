@@ -10,6 +10,7 @@ from .serializers import (
     OfficeMemberSerializer, UpdateMemberRoleSerializer
 )
 from .permissions import IsMemberOfOffice, IsManagerOrSecretaryOfOffice
+from subscriptions.utils import sync_quantity_to_stripe
 
 
 # =========
@@ -107,4 +108,10 @@ class ToggleMemberActiveView(generics.GenericAPIView):
 
         rel.is_active = not bool(rel.is_active)
         rel.save(update_fields=['is_active'])
+
+        try:
+            sync_quantity_to_stripe(office_id)
+        except Exception as e:
+            print("Stripe qty sync error: ", e)
+            
         return Response({'detail': 'Statut mis à jour.', 'is_active': rel.is_active}, status=200)

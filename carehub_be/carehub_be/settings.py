@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import datetime
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -71,7 +72,23 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-STRIPE_SECRET_KEY = "sk_test_51OVEizFtm1LR4NNUnbQJ7fV2h5xi7m11joWjTWJZ217FJAwJ9a6uWCOYMLn2qSFUYEbo8wjxlkfmgTEZyBOoCVzZ00PGCV86Qd"
+FRONTEND_URL = "http://localhost:5173"
+STRIPE_SECRET_KEY = "sk_test_51Rw3PpCOd5c3tDTyFIn0WvEmo44wYUjJyZN1M7fl6jxS6AQBrKEune7XRFRIF5y4Rms6fn9QARuiar24wq7GtfSC00665uY2zx"
+
+STRIPE_PRICES = {
+    "Small_Cab":  "price_1Rw3h4COd5c3tDTy3h4AkzTG",
+    "Medium_Cab": "price_1Rw3hMCOd5c3tDTyzuNpBEoS",
+    "Big_Cab":    "price_1Rw3hcCOd5c3tDTy3gSZ4miF",
+}
+
+# Plafonds d’employés actifs autorisés par plan
+SEAT_CAPS = {
+    "Small_Cab": 3,
+    "Medium_Cab": 9,
+    "Big_Cab":   None,
+}
+
+STRIPE_WEBHOOK_SECRET = "whsec_0c32d3a283b6892eb43f59eb7b8ce9ebd3dd6912f5b7c39d07ecfe22236a804c"
 
 AUTH_USER_MODEL = 'accounts.User'
 DATA_RETENTION_YEARS = 30

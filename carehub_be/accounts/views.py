@@ -1,4 +1,5 @@
-import uuid
+from datetime import timedelta
+from django.conf import settings
 from django.shortcuts import render
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -10,9 +11,31 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
+import stripe
+from subscriptions.utils import can_activate_one_more
+from subscriptions.models import Subscription
 from offices.models import Office
 from .models import Invitation, User, UserOfficeRole
 from .serializers import RegisterSerializer, UserSerializer
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+def get_price_id_from_plan(plan: str) -> str | None:
+    """
+    Retourne l'id du price Stripe en fonction du plan choisi.
+    Prend d'abord settings.STRIPE_PRICES sinon STRIPE_PRICE*
+    """
+    prices = getattr(settings, "STRIPE_PRICES", None)
+    if isinstance(prices, dict):
+        return prices.get(plan)
+    
+    mapping = {
+        "Small_Cab": getattr(settings, "STRIPE_PRICE_SMALL_CAB", None),
+        "Medium_Cab": getattr(settings, "STRIPE_PRICE_MEDIUM_CAB", None),
+        "Big_Cab": getattr(settings, "STRIPE_PRICE_BIG_CAB", None),
+    }
+
+    return mapping.get(plan)
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -62,6 +85,11 @@ class RegisterFullAccount(APIView):
     @transaction.atomic
     def post(self, request):
         data = request.data
+        plan = (data.get('plan') or 'Small_Cab')
+        price_id = get_price_id_from_plan(plan)
+        
+        if not price_id:
+            return Response({"error": "Plan inconnu ou non configuré."}, status=400)
 
         #Creation of User
         user = User.objects.create_user(
@@ -81,14 +109,53 @@ class RegisterFullAccount(APIView):
             zipcode=data['zipcode'],
             city=data['city'],
             email=data['email'],
-            plan=data['plan'],
+            plan=plan,
         )
 
         #Créateur du cabinet est direct manager
         UserOfficeRole.objects.create(user=user, office=office, role='manager')
 
+        sub, _ = Subscription.objects.get_or_create(
+            office=office,
+            defaults={
+                'plan': plan,
+                'start_date': timezone.now().date(),
+                'end_date':   (timezone.now() + timedelta(days=14)).date(),
+                'price': 0,
+                'currency': 'eur',
+                'state': 'pending',
+                'payment_status': 'unpaid',
+            }
+        )
+        sub.plan = plan
+        sub.grace_until = timezone.now() + timedelta(days=14)
+        sub.save(update_fields=['plan', 'grace_until'])
+
+        if not getattr(sub, 'stripe_customer_id', None):
+            customer = stripe.Customer.create(
+                email=user.email,
+                metadata={'office_id': str(office.id)},
+            )
+            sub.stripe_customer_id = customer.id
+            sub.save(update_fields=['stripe_customer_id'])
+        
+        success_url = f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')}/settings?checkout=success"
+        cancel_url  = f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')}/settings?checkout=cancel"
+
+        session = stripe.checkout.Session.create(
+            mode='subscription',
+            customer=sub.stripe_customer_id,
+            line_items=[{
+                'price': price_id,
+                'quantity': 1,
+            }],
+            allow_promotion_codes=True,
+            success_url=success_url,
+            cancel_url=cancel_url,
+        )
+
         refresh =  RefreshToken.for_user(user)
-        return Response({'refresh': str(refresh), 'access': str(refresh.access_token)}, status=status.HTTP_201_CREATED)
+        return Response({'refresh': str(refresh), 'access': str(refresh.access_token), 'checkout_url': session.url}, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -108,21 +175,18 @@ def register_user(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def invite_user(request):
-    print("Authorization Header:", request.headers.get('Authorization'))
-    try:
-        user, token = JWTAuthentication().authenticate(request)
-        print("JWT ok ! Utilisateur :", user)
-    except Exception as e:
-        print("Erreur JWT :", e)
-        return Response({"error": "JWT invalide ou expiré"}, status=401)
-
     data = request.data
     email = data['email']
     office_id = data['office_id']
     role = data['role']
     name = data.get('name', '')
     surname = data.get('surname', '')
-    expires_at = timezone.now() + timezone.timedelta(days=2)
+    
+    office = Office.objects.get(id=office_id)
+    if not can_activate_one_more(office):
+        return Response({"error": "Plafond d'employés atteint pour ce plan, veuillez passer au plan suivant."}, status=403)
+
+    expires_at = timezone.now() + timedelta(days=2)
     invitation = Invitation.objects.create(
         email=email,
         office_id=office_id,
@@ -229,10 +293,16 @@ def invite_existing_user(request):
     try:
         user = User.objects.get(inami=inami)
         office = Office.objects.get(id=office_id)
+
+        if not can_activate_one_more(office):
+            return Response({"error": "Plafond d'employés atteint pour ce plan, veuillez passer au plan suivant."}, status=403)
+        
         if UserOfficeRole.objects.filter(user=user, office=office).exists():
             return Response({"error": "Ce collaborateur est déjà dans le cabinet."}, status=400)
+        
         UserOfficeRole.objects.create(user=user, office=office, role=role)
         return Response({"message": "Invitation envoyée."})
+    
     except User.DoesNotExist:
         return Response({"error": "Utilisateur non trouvé."}, status=404)
     except Office.DoesNotExist:
