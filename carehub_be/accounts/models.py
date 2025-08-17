@@ -25,6 +25,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(max_length=50)
     surname = models.CharField(max_length=50)
     inami = models.CharField(max_length=11, unique=True, null=True, blank=True)
+    niss = models.CharField(max_length=11, unique=True, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 

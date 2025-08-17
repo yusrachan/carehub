@@ -6,11 +6,9 @@ import { OfficeProvider } from './context/OfficeContext.jsx';
 import { BrowserRouter } from 'react-router-dom';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
     <BrowserRouter>
       <OfficeProvider>
         <App />
       </OfficeProvider>
     </BrowserRouter>
-  </React.StrictMode>
 );

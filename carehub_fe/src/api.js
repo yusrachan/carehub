@@ -1,6 +1,8 @@
 import axios from "axios";
 
-export const api = axios.create({ baseURL: "/api" });
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000/api";
+
+export const api = axios.create({ baseURL: API_BASE });
 
 let isRefreshing = false;
 let subscribers = [];
@@ -16,6 +18,10 @@ function addSubscriber(cb) {
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  const officeId = localStorage.getItem("current_office_id");
+  if (officeId) config.headers["X-Office-Id"] = officeId;
+
   return config;
 });
 
@@ -24,23 +30,19 @@ api.interceptors.response.use(
   async (error) => {
     const { response, config: originalRequest } = error;
 
-    // Si pas de réponse ou pas 401 -> on laisse passer
     if (!response || response.status !== 401) return Promise.reject(error);
 
-    // Pas de refresh token -> on ne peut pas récupérer, on échoue
+    const isRefreshCall = originalRequest?.url?.endsWith("/auth/token/refresh/");
     const refreshToken = localStorage.getItem("refresh_token");
-    if (!refreshToken) {
-      // Option: rediriger vers /login
+    if (isRefreshCall || !refreshToken) {
       return Promise.reject(error);
     }
 
-    // Évite les boucles infinies
     if (originalRequest._retry) {
       return Promise.reject(error);
     }
     originalRequest._retry = true;
 
-    // Si un refresh est déjà en cours, on met en file d'attente
     if (isRefreshing) {
       return new Promise((resolve) => {
         addSubscriber((newToken) => {
@@ -52,7 +54,7 @@ api.interceptors.response.use(
 
     isRefreshing = true;
     try {
-      const { data } = await axios.post("/api/auth/token/refresh/", { refresh: refreshToken });
+      const { data } = await api.post("/auth/token/refresh/", { refresh: refreshToken });
       const newAccess = data.access || data.access_token;
       localStorage.setItem("access_token", newAccess);
 
@@ -63,7 +65,6 @@ api.interceptors.response.use(
       return api(originalRequest);
     } catch (err) {
       isRefreshing = false;
-      // Refresh expiré -> on nettoie et on laisse échouer (ou on redirige vers /login)
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       return Promise.reject(err);

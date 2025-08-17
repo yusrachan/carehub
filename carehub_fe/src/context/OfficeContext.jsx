@@ -1,75 +1,65 @@
-/*
-1. Charge les cabinets de l'utilisateur
-2. Choisis le cabinet courant
-3. Expose ces infos partout via hook useOffice()
-4. Mémorise le choix dans localStorage pour que user retrouve le même cabinet au prochain refresh
-*/
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { api } from "../api";
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import http from '../lib/http';
-
-const OfficeContext = createContext(null);
+const LS_KEY = "current_office_id";
+const OfficeContext = createContext(undefined);
 
 export function OfficeProvider({ children }) {
-  const [currentOffice, setCurrentOffice] = useState(null);
   const [offices, setOffices] = useState([]);
+  const [currentOfficeId, setCurrentOfficeId] = useState(localStorage.getItem(LS_KEY));
   const [loading, setLoading] = useState(true);
   const location = useLocation();
 
-  const isPublic = location.pathname.startsWith('/login')
-                || location.pathname.startsWith('/register')
-                || location.pathname.startsWith('/register-join');
-
   useEffect(() => {
     let alive = true;
-
     (async () => {
-      const token = localStorage.getItem('access');
-      if (isPublic || !token) { 
-        if (alive) setLoading(false);
-        return;
-      }
-
+      setLoading(true);
       try {
-        const { data: me } = await http.get('/settings/me/');
+        const { data } = await api.get("/offices/my/");
         if (!alive) return;
-
-        const list = Array.isArray(me.offices) ? me.offices.filter(o => o.is_active) : [];
+        const list = Array.isArray(data) ? data : [];
         setOffices(list);
 
-        const savedId = localStorage.getItem('currentOfficeId');
-        const chosen = list.find(o => String(o.id) === String(savedId)) || list[0] || null;
-        setCurrentOffice(chosen);
-        if (chosen) localStorage.setItem('currentOfficeId', chosen.id);
+        // Choisir un cabinet valide
+        let wanted = localStorage.getItem(LS_KEY);
+        if (!wanted || !list.some(o => String(o.id) === String(wanted))) {
+          wanted = list.length ? String(list[0].id) : null;
+        }
+        setCurrentOfficeId(wanted);
+        if (wanted) localStorage.setItem(LS_KEY, wanted);
+        else localStorage.removeItem(LS_KEY);
       } catch (e) {
-        console.warn('OfficeContext: échec /settings/me/', e);
+        console.warn("OfficeContext: /offices/my/ failed", e);
         setOffices([]);
-        setCurrentOffice(null);
+        setCurrentOfficeId(null);
       } finally {
         if (alive) setLoading(false);
       }
     })();
-
     return () => { alive = false; };
-  }, [isPublic, location.pathname]);
+  }, [location.pathname]);
 
-  const value = useMemo(() => ({
-    loading,
-    offices,
-    currentOffice,
-    setCurrentOffice: (o) => {
-      setCurrentOffice(o);
-      if (o) localStorage.setItem('currentOfficeId', o.id);
-      else localStorage.removeItem('currentOfficeId');
-    }
-  }), [loading, offices, currentOffice]);
+  const currentOffice = useMemo(
+    () => offices.find(o => String(o.id) === String(currentOfficeId)) || null,
+    [offices, currentOfficeId]
+  );
 
-  return <OfficeContext.Provider value={value}>{children}</OfficeContext.Provider>;
+  const switchOffice = (id) => {
+    const s = String(id);
+    setCurrentOfficeId(s);
+    localStorage.setItem(LS_KEY, s);
+  };
+
+  return (
+    <OfficeContext.Provider value={{ loading, offices, currentOffice, currentOfficeId, switchOffice }}>
+      {children}
+    </OfficeContext.Provider>
+  );
 }
 
 export function useOffice() {
   const ctx = useContext(OfficeContext);
-  if (!ctx) throw new Error('useOffice must be used within OfficeProvider');
+  if (!ctx) throw new Error("useOffice must be used within OfficeProvider");
   return ctx;
 }

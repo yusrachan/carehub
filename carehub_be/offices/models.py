@@ -14,12 +14,10 @@ class Office(models.Model):
     is_paid = models.BooleanField(default=False)
     registration_token = models.CharField(max_length=100, blank=True, null=True)
     PLAN_CHOICES = [
-    ('petit_cabinet', 'Cabinet 1-3 praticiens'),
-    ('moyen_cabinet', 'Cabinet 4-10 praticiens'),
-    ('grand_cabinet', 'Cabinet 11+ praticiens'),
+    ('role_based', 'Facturation par rôle'),
     ]
 
-    plan = models.CharField(max_length=20, choices=PLAN_CHOICES)
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, null=True, blank=True, default='role_based')
 
 
     def __str__(self):

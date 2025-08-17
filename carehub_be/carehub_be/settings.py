@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import datetime
 import os
 from pathlib import Path
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -73,19 +74,14 @@ SIMPLE_JWT = {
 }
 
 FRONTEND_URL = "http://localhost:5173"
+SUBSCRIPTION_TRIAL_DAYS = 0
+SUBSCRIPTION_PRORATION_BEHAVIOR = "create_prorations"
 STRIPE_SECRET_KEY = "sk_test_51Rw3PpCOd5c3tDTyFIn0WvEmo44wYUjJyZN1M7fl6jxS6AQBrKEune7XRFRIF5y4Rms6fn9QARuiar24wq7GtfSC00665uY2zx"
 
-STRIPE_PRICES = {
-    "Small_Cab":  "price_1Rw3h4COd5c3tDTy3h4AkzTG",
-    "Medium_Cab": "price_1Rw3hMCOd5c3tDTyzuNpBEoS",
-    "Big_Cab":    "price_1Rw3hcCOd5c3tDTy3gSZ4miF",
-}
-
-# Plafonds d’employés actifs autorisés par plan
-SEAT_CAPS = {
-    "Small_Cab": 3,
-    "Medium_Cab": 9,
-    "Big_Cab":   None,
+STRIPE_ROLE_PRICES = {
+    "secretary":  "price_1RwlurCOd5c3tDTyG4iwlFCt",
+    "practitioner": "price_1RwludCOd5c3tDTyqfAYOdJO",
+    "manager": "price_1RwluDCOd5c3tDTyIIDb7r5L",
 }
 
 STRIPE_WEBHOOK_SECRET = "whsec_0c32d3a283b6892eb43f59eb7b8ce9ebd3dd6912f5b7c39d07ecfe22236a804c"
@@ -106,6 +102,11 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-office-id",
+    "authorization",
+    "content-type",
+]
 CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
 
 ROOT_URLCONF = 'carehub_be.urls'

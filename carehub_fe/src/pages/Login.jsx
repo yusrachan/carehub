@@ -1,13 +1,13 @@
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { useNavigate } from "react-router-dom";
+import { data, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import axios from "axios";
 
 const schema = yup.object().shape({
     email: yup.string().email("E-mail invalide").required("E-mail requis"),
-    password: yup.string().min(7, "Minimum 7 caractères").required("Mot de passe requis"),
+    password: yup.string().min(8, "Minimum 8 caractères").required("Mot de passe requis"),
 });
 
 export default function Login() {
@@ -17,7 +17,18 @@ export default function Login() {
         const token = localStorage.getItem("access_token")
         if (token) {
             axios.defaults.headers.common["Authorization"] = `Bearer ${token}`
-            navigate("/dashboard")
+            if (!localStorage.getItem("current_office_id")){
+                axios.get("/api/offices/my/")
+                    .then(({ data }) => {
+                        if(Array.isArray(data) && data.length){
+                            localStorage.setItem("current_office_id", String(data[0].id))
+                        }
+                    })
+                    .finally(() => navigate("/dashboard"))
+            } else {
+                navigate("/dashboard")
+            }
+            
         }
     }, [navigate])
 
@@ -27,15 +38,26 @@ export default function Login() {
         resolver: yupResolver(schema),
     });
 
-    const onSubmit = async (data) => {
+    const onSubmit = async (values) => {
         try {
             const res = await axios.post("/api/login/", {
-                email: data.email,
-                password: data.password,
+                email: values.email,
+                password: values.password,
             })
             localStorage.setItem("access_token", res.data.access)
             localStorage.setItem("refresh_token", res.data.refresh)
             axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.access}`
+
+            try {
+                const { data: offices } = await axios.get("/api/offices/my/")
+                if(Array.isArray(offices) && offices.length){
+                    localStorage.setItem("current_office_id", String(offices[0].id))
+                } else {
+                    localStorage.removeItem("current_office_id")
+                }
+            } catch (e) {
+                console.warn("Chargement de /offices/my/ impossible:", e)
+            }
             navigate("/dashboard")
         } catch (err) {
             setError("password", {
@@ -61,7 +83,7 @@ export default function Login() {
                     id="email"
                     {...register("email")}
                     className="w-full px-4 py-2 border rounded-lg text-gray-800 bg-white focus focus:outline-none focus:ring-2 focus:ring-[#466896]"/>
-                {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
+                    {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
                 </div>
 
                 <div className="mb-6">
@@ -73,14 +95,14 @@ export default function Login() {
                     id="password"
                     {...register("password")}
                     className="w-full px-4 py-2 border rounded-lg text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#466896]"/>
-                {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
+                    {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
                 </div>
 
                 <button
                 type="submit"
                 disabled={isSubmitting}
                 className="w-full bg-[#466896] text-white py-2 rounded-lg hover:bg-[#3a5870] transition">
-                {isSubmitting ? "Connexion..." : "Se connecter"}
+                    {isSubmitting ? "Connexion..." : "Se connecter"}
                 </button>
             </form>
         </div>

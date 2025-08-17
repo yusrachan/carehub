@@ -29,54 +29,7 @@ const schema = yup.object().shape({
     .matches(/^\d{4,5}$/, "Le code postale doit comporter 4 ou 5 chiffres")
     .required("N° de rue requis"),
     city: yup.string().required("Ville requise"),
-    plan: yup
-    .string()
-    .oneOf(
-        ["petit_cabinet", "moyen_cabinet", "grand_cabinet"], "Plan invalide"
-    )
-    .required("Plan requis"),
 });
-
-const PLAN_MAP = {
-  petit_cabinet: "Small_Cab",
-  moyen_cabinet: "Medium_Cab",
-  grand_cabinet: "Big_Cab",
-}
-
-const PLAN_OPTIONS = [
-  { value: "petit_cabinet", title: "Petit cabinet", price: "30€/mois", desc: "1-3 employés" },
-  { value: "moyen_cabinet", title: "Moyen cabinet", price: "70€/mois", desc: "4-9 employés" },
-  { value: "grand_cabinet", title: "Grand cabinet", price: "120€/mois", desc: "10+ employés" },
-]
-
-function PlanCards({ register, errors, watch, setValue }) {
-  const selected = watch("plan")
-
-  return(
-    <div className="mb-4">
-      <label className="block text-gray-700 mb-2">Plan d’abonnement</label>
-      <div className="grid sm:grid-cols-3 gap-3">
-        {PLAN_OPTIONS.map(p => {
-          const active = selected === p.value;
-          return (
-            <button
-              type="button"
-              key={p.value}
-              onClick={() => setValue("plan", p.value, { shouldValidate: true })}
-              className={`rounded-xl border p-4 text-left transition
-                          ${active ? "border-black ring-2 ring-black" : "border-gray-200 hover:border-gray-400"}`}>
-              <div className="font-semibold">{p.title}</div>
-              <div className="text-2xl font-bold">{p.price}</div>
-              <div className="text-sm text-gray-600">{p.desc}</div>
-            </button>
-          );
-        })}
-      </div>
-      <input {...register("plan")} type="hidden" />
-      {errors.plan && <p className="text-red-500 text-sm mt-1">{errors.plan.message}</p>}
-    </div>
-  )
-}
 
 function PasswordField({ register, error }) {
   const [show, setShow] = useState(false)
@@ -88,7 +41,7 @@ function PasswordField({ register, error }) {
     if (/[A-Z]/.test(v)) s++;
     if (/[a-z]/.test(v)) s++;
     if (/\d/.test(v)) s++;
-    if (/[^A-Za-z0-99]/.test(v)) s++;
+    if (/[^A-Za-z0-9]/.test(v)) s++;
     setScore(s)
   }
 
@@ -142,51 +95,40 @@ function NumericField({ name, label, digits = 11, register, error }) {
 
 export default function Register() {
   const navigate = useNavigate()
-  const { register, handleSubmit, setError, watch, setValue, formState: { errors } } = useForm({
+  const { register, handleSubmit, setError, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
   });
 
   const [loading, setLoading] = useState(false)
   const [globalError, setGlobalError] = useState("")
   
-  const onSubmit = async (data) => {
+  const onSubmit = async (form) => {
     setGlobalError("")
+    setLoading(true)
     try {
-      setLoading(true)
-      const payload = {
-        ...data,
-        plan: PLAN_MAP[data.plan] ?? "Small_Cab",
-      }
-      const res = await axios.post("/api/register-full-account/", payload)
+      const res = await axios.post("/api/register-full-account/", form)
+      const { access, refresh, checkout_url } = res.data
 
-      localStorage.setItem("access_token", res.data.access)
-      localStorage.setItem("refresh_token", res.data.refresh)
-      axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.access}`
+      localStorage.setItem("access_token", access)
+      localStorage.setItem("refresh_token", refresh)
+      axios.defaults.headers.common.Authorization = `Bearer ${access}`
 
-      if (res.data.checkout_url){
-        window.location.assign(res.data.checkout_url)
+      if(checkout_url) {
+        window.location.replace(checkout_url)
         return
       }
       navigate("/settings?tab=subscription")
     } catch (err) {
       const server= err?.response?.data
-      console.error("Register error:", server, err);
       if (server && typeof server === "object") {
-        Object.entries(server).forEach(([field, message]) => {
+        let hasField = false
+        for (const [field, message] of Object.entries(server)) {
+          hasField = true
           setError(field, { type: "server", message: String(message) });
-        });
+        };
+        if (!hasField) setGlobalError("Une erreur est survenue. Réessayez.")
       } else {
-        setGlobalError(typeof server === "string" ? server : "Erreur serveur (500). Regarde la console Django.");
-      }
-      if (typeof server === "string"){
-        setGlobalError(server)
-      } else {
-        let anyField = false
-        Object.entries(server).forEach(([field, message]) => {
-          anyField = true
-          setError(field, { type: "server", message: String(message) })
-        })
-        if (!anyField) setGlobalError("Une erreur est survenue. Réessayez.")
+        setGlobalError(typeof server === "string" ? server : "Erreur serveur (500).");
       }
     } finally {
       setLoading(false)
@@ -327,8 +269,6 @@ export default function Register() {
               {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>}
             </div>
           </div>
-
-          <PlanCards register={register} errors={errors} watch={watch} setValue={setValue} />
         </fieldset>
 
         <button

@@ -12,6 +12,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
 import stripe
+from subscriptions.services import ensure_subscription_matches_roles
 from subscriptions.utils import can_activate_one_more
 from subscriptions.models import Subscription
 from offices.models import Office
@@ -20,22 +21,6 @@ from .serializers import RegisterSerializer, UserSerializer
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
-def get_price_id_from_plan(plan: str) -> str | None:
-    """
-    Retourne l'id du price Stripe en fonction du plan choisi.
-    Prend d'abord settings.STRIPE_PRICES sinon STRIPE_PRICE*
-    """
-    prices = getattr(settings, "STRIPE_PRICES", None)
-    if isinstance(prices, dict):
-        return prices.get(plan)
-    
-    mapping = {
-        "Small_Cab": getattr(settings, "STRIPE_PRICE_SMALL_CAB", None),
-        "Medium_Cab": getattr(settings, "STRIPE_PRICE_MEDIUM_CAB", None),
-        "Big_Cab": getattr(settings, "STRIPE_PRICE_BIG_CAB", None),
-    }
-
-    return mapping.get(plan)
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -85,18 +70,31 @@ class RegisterFullAccount(APIView):
     @transaction.atomic
     def post(self, request):
         data = request.data
-        plan = (data.get('plan') or 'Small_Cab')
-        price_id = get_price_id_from_plan(plan)
-        
-        if not price_id:
-            return Response({"error": "Plan inconnu ou non configuré."}, status=400)
 
+        errors = {}
+        if User.objects.filter(email=data['email']).exists():
+                errors['email'] = "E-mail déjà utilisé."
+        if User.objects.filter(inami=data['inami']).exists():
+            errors['inami'] = "INAMI déjà utilisé."
+        if User.objects.filter(niss=data['niss']).exists():
+            errors['niss'] = "NISS déjà utilisé."
+
+        if Office.objects.filter(bce_number=data['bce_number']).exists():
+            errors['bce_number'] = "Numéro BCE déjà utilisé."
+        if Office.objects.filter(email=data['email']).exists():
+            errors['email'] = "E-mail déjà utilisé pour un cabinet."
+
+        if errors:
+            return Response(errors, status=400)
+        
         #Creation of User
         user = User.objects.create_user(
             email=data['email'],
             password=data['password'],
             name=data['name'],
             surname=data['surname'],
+            inami=data.get('inami'),
+            niss=data.get('niss'),
         )
 
         #Creation of Office
@@ -109,53 +107,23 @@ class RegisterFullAccount(APIView):
             zipcode=data['zipcode'],
             city=data['city'],
             email=data['email'],
-            plan=plan,
+            plan='role_based',
         )
 
         #Créateur du cabinet est direct manager
         UserOfficeRole.objects.create(user=user, office=office, role='manager')
-
-        sub, _ = Subscription.objects.get_or_create(
-            office=office,
-            defaults={
-                'plan': plan,
-                'start_date': timezone.now().date(),
-                'end_date':   (timezone.now() + timedelta(days=14)).date(),
-                'price': 0,
-                'currency': 'eur',
-                'state': 'pending',
-                'payment_status': 'unpaid',
-            }
-        )
-        sub.plan = plan
-        sub.grace_until = timezone.now() + timedelta(days=14)
-        sub.save(update_fields=['plan', 'grace_until'])
-
-        if not getattr(sub, 'stripe_customer_id', None):
-            customer = stripe.Customer.create(
-                email=user.email,
-                metadata={'office_id': str(office.id)},
-            )
-            sub.stripe_customer_id = customer.id
-            sub.save(update_fields=['stripe_customer_id'])
         
-        success_url = f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')}/settings?checkout=success"
-        cancel_url  = f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')}/settings?checkout=cancel"
+        sync_res = ensure_subscription_matches_roles(office, user.email)
+        refresh = RefreshToken.for_user(user)
+        resp = {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        }
 
-        session = stripe.checkout.Session.create(
-            mode='subscription',
-            customer=sub.stripe_customer_id,
-            line_items=[{
-                'price': price_id,
-                'quantity': 1,
-            }],
-            allow_promotion_codes=True,
-            success_url=success_url,
-            cancel_url=cancel_url,
-        )
+        if isinstance(sync_res, dict) and sync_res.get("checkout_url"):
+            resp["checkout_url"] = sync_res["checkout_url"]
 
-        refresh =  RefreshToken.for_user(user)
-        return Response({'refresh': str(refresh), 'access': str(refresh.access_token), 'checkout_url': session.url}, status=status.HTTP_201_CREATED)
+        return Response(resp, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
