@@ -15,6 +15,7 @@ export default function ProfileTab() {
           name: data.name ?? "",
           surname: data.surname ?? "",
           email: data.email ?? "",
+          inami: data.inami ?? "",
         });
       })
       .catch ((e) => {
@@ -81,9 +82,10 @@ export default function ProfileTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <InfoRow label="Prénom" value={me.name || '—'} />
           <InfoRow label="Nom" value={me.surname || '—'} />
-          <div className="md:col-span-2">
-            <InfoRow label="Email" value={me.email || '—'} />
-          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InfoRow label="Email" value={me.email || '—'} />
+          <InfoRow label="INAMI" value={me.inami || '—'} />
         </div>
       </div>
 

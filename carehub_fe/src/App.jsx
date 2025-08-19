@@ -13,6 +13,7 @@ import Register from "./pages/Register";
 import RegisterJoin from "./pages/RegisterJoin";
 import TeamPage from "./pages/TeamPage";
 import SettingsPage from "./pages/Settings/SettingsPage";
+import Paywall from "./pages/Paywall";
 
 export default function App() {
   return (
@@ -23,6 +24,8 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/register-join" element={<RegisterJoin />} />
         </Route>
+        
+        <Route path="/paywall" element={<Paywall />} />
 
         <Route element={<PrivateLayout/>}>
           <Route path="/dashboard" element={<Dashboard />} />

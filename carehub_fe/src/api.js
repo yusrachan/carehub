@@ -30,7 +30,28 @@ api.interceptors.response.use(
   async (error) => {
     const { response, config: originalRequest } = error;
 
-    if (!response || response.status !== 401) return Promise.reject(error);
+    if (!response) return Promise.reject(error);
+    
+    if (response.status === 402){
+      const p = response.data || {}
+
+      if (p.checkout_url) sessionStorage.setItem("paywall_checkout_url", p.checkout_url);
+      if (p.office_id) sessionStorage.setItem("paywall_office_id", String(p.office_id));
+      if (p.office_name) sessionStorage.setItem("paywall_office_name", p.office_name);
+      sessionStorage.setItem("paywall_reason", p.detail || "payment_required")
+
+      const next = window.location.pathname + window.location.search
+      sessionStorage.setItem("paywall_next", next)
+
+      if(!window.location.pathname.startsWith("/paywall")) {
+        window.location.assign("/paywall")
+      }
+      return Promise.reject(error)
+    }
+
+    if (response.status !== 401){
+      return Promise.reject(error)
+    }
 
     const isRefreshCall = originalRequest?.url?.endsWith("/auth/token/refresh/");
     const refreshToken = localStorage.getItem("refresh_token");

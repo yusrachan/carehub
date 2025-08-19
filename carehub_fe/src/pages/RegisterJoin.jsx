@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { data, useNavigate } from "react-router-dom";
 
-const RegisterJoin = () => {
+export default function RegisterJoin() {
     const [fields, setFields] = useState(null)
     const [password, setPassword] = useState("")
     const [msg, setMsg] = useState("")
@@ -15,7 +15,7 @@ const RegisterJoin = () => {
             setMsg("Lien d'invitation invalide.")
             return
         }
-        fetch(`/api/invitation-detail/?token=${token}`)
+        fetch(`/api/invitation-detail/?token=${encodeURIComponent(token)}`)
             .then(res => res.json())
             .then(data => {
                 if(data.error) setMsg(data.error);
@@ -24,75 +24,135 @@ const RegisterJoin = () => {
             .catch(() => setMsg("Erreur serveur."))
     }, [])
 
-    const handleSubmit = async e => {
-        e.preventDefault()
-        setLoading(true)
-        setMsg("")
+    const acceptExisting = async () => {
+    if (!fields) return;
+    setLoading(true);
+    setMsg("");
+    try {
+        const res = await fetch("/api/register-join/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: fields.token }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+            localStorage.setItem("access_token", data.access);
+            localStorage.setItem("refresh_token", data.refresh);
+            if (fields.office_id) {
+                localStorage.setItem("current_office_id", String(fields.office_id));
+            }
+            navigate("/dashboard");
+        } else {
+            setMsg(data.error || "Impossible d'accepter l'invitation.");
+        }
+        } catch {
+            setMsg("Erreur serveur.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const createNewAccountAndJoin = async (e) => {
+        e.preventDefault();
+        if (!fields) return;
+        setLoading(true);
+        setMsg("");
         try {
             const res = await fetch("/api/register-join/", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    token: fields.token,
-                    password,
+                token: fields.token,
+                password, // Ici on envoie le mdp pour la création
                 }),
-            });
-            const data = await res.json()
-            if (res.ok) {
-                setMsg("Inscription réussie !")
-                localStorage.setItem("access_token", data.access)
-                localStorage.setItem("refresh", data.refresh)
-                setTimeout(() => navigate("/dashboard"), 1500);
-            } else {
-                setMsg(data.error || "Erreur lors de l'inscription.")
+        });
+        const data = await res.json();
+        if (res.ok) {
+            localStorage.setItem("access_token", data.access);
+            localStorage.setItem("refresh_token", data.refresh);
+            if (fields.office_id) {
+                localStorage.setItem("current_office_id", String(fields.office_id));
             }
-        } catch (err) {
-            setMsg("Erreur serveur.")
+            navigate("/dashboard");
+        } else {
+            setMsg(data.error || "Erreur lors de l'inscription.");
         }
-        setLoading(false)
+        } catch {
+            setMsg("Erreur serveur.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!fields) {
+        return <div className="p-6">{msg ? <p>{msg}</p> : <p>Chargement...</p>}</div>;
     }
 
-    if(!fields) return <div className="p-6">{msg ? <p>{msg}</p> : <p>Chargement...</p>}</div>
+    if (fields.user_exists) {
+        return (
+        <div className="max-w-md mx-auto p-6 bg-white rounded-xl shadow mt-12 text-center">
+            <h2 className="text-xl font-bold mb-2">Invitation</h2>
+            <p className="text-gray-700">
+            Vous êtes invité(e) à rejoindre <span className="font-medium">{fields.office_name}</span>{" "}
+            en tant que <span className="font-medium">{fields.role}</span> avec l'adresse{" "}
+            <span className="font-mono">{fields.email}</span>.
+            </p>
+            <p className="text-gray-600 mt-2">Souhaitez-vous accepter cette invitation ?</p>
+
+            {msg && <div className="mt-3 text-sm text-red-600">{msg}</div>}
+
+            <div className="mt-6 flex gap-2">
+            <button
+                onClick={acceptExisting}
+                disabled={loading}
+                className={`flex-1 py-2 rounded-lg text-white ${loading ? "bg-gray-400" : "bg-[#466896] hover:opacity-95"}`}>
+                {loading ? "Validation…" : "Accepter et rejoindre"}
+            </button>
+            <a
+                href="/login"
+                className="flex-1 py-2 rounded-lg border text-gray-700 hover:bg-gray-50 inline-flex items-center justify-center">
+                Se connecter avec un autre compte
+            </a>
+            </div>
+        </div>
+        );
+    }
 
     return (
-        <form onSubmit={handleSubmit} className="max-w-md mx-auto p-4 bg-white rounded-xl shadow mt-12">
-            <h2 className="text-xl font-bold mb-4">Création de votre compte</h2>
+        <form onSubmit={createNewAccountAndJoin} className="max-w-md mx-auto p-6 bg-white rounded-xl shadow mt-12">
+            <h2 className="text-xl font-bold mb-4">Créer votre compte et rejoindre</h2>
             <div className="mb-2">
-                <label>E-mail</label>
-                <input type="email" className="w-full" value={fields.email} readOnly />
+                <label className="block text-sm text-gray-700">Cabinet</label>
+                <input type="text" className="w-full border rounded px-2 py-1" value={fields.office_name || ""} readOnly />
             </div>
             <div className="mb-2">
-                <label>Prénom</label>
-                <input type="text" className="w-full" value={fields.name} readOnly />
+                <label className="block text-sm text-gray-700">E-mail</label>
+                <input type="email" className="w-full border rounded px-2 py-1" value={fields.email} readOnly />
             </div>
             <div className="mb-2">
-                <label>Nom</label>
-                <input type="text" className="w-full" value={fields.surname} readOnly />
+                <label className="block text-sm text-gray-700">Prénom</label>
+                <input type="text" className="w-full border rounded px-2 py-1" value={fields.name} readOnly />
             </div>
-            <div className="mb-2">
-                <label>Rôle</label>
-                <input type="text" className="w-full" value={fields.role} readOnly />
+            <div className="mb-4">
+                <label className="block text-sm text-gray-700">Nom</label>
+                <input type="text" className="w-full border rounded px-2 py-1" value={fields.surname} readOnly />
             </div>
-            <div className="mb-2">
-                <label>Mot de passe</label>
+            <div className="mb-4">
+                <label className="block text-sm text-gray-700">Mot de passe</label>
                 <input
                 type="password"
-                className="w-full"
+                className="w-full border rounded px-2 py-2"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                />
+                onChange={(e) => setPassword(e.target.value)}
+                required/>
             </div>
+            {msg && <div className="mb-3 text-sm text-red-600">{msg}</div>}
             <button
                 type="submit"
-                className="w-full bg-green-600 text-white py-2 rounded disabled:opacity-60"
                 disabled={loading}
-            >
-                {loading ? "Création en cours..." : "Créer mon compte"}
+                className={`w-full py-2 rounded-lg text-white ${loading ? "bg-gray-400" : "bg-[#466896] hover:opacity-95"}`}>
+                {loading ? "Création…" : "Créer mon compte et rejoindre"}
             </button>
-            {msg && <p className="mt-2 text-center">{msg}</p>}
         </form>
-    )
+    );
 }
-
-export default RegisterJoin

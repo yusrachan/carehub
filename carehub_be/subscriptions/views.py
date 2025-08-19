@@ -8,8 +8,11 @@ from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from accounts.models import UserOfficeRole
+from .services import ensure_subscription_matches_roles
+from .utils import office_has_active_access
 from offices.models import Office
 from .models import Subscription
 
@@ -161,3 +164,53 @@ class StripeWebhook(APIView):
             return HttpResponse(status=200)
         
         return HttpResponse(status=200)
+
+class AccessGuard(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        return Response(status=204)
+
+class SubscriptionStatus(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # 1) essaie via l’en-tête X-Office-Id
+        office_id = request.headers.get("X-Office-Id")
+        office = None
+        if office_id:
+            office = Office.objects.filter(id=office_id).first()
+
+        # 2) sinon, prends le premier cabinet du user
+        if not office:
+            rel = UserOfficeRole.objects.filter(user=request.user).order_by("id").first()
+            office = rel.office if rel else None
+
+        if not office:
+            # Pas de cabinet = pas d’accès
+            return Response({"is_active": False, "office_id": None, "office_name": None})
+
+        return Response({
+            "is_active": office_has_active_access(office),
+            "office_id": office.id,
+            "office_name": office.name,
+        })
+    
+class CheckoutStart(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        office_id = request.headers.get("X-Office-Id") or (UserOfficeRole.objects.filter(user=request.user).values_list("office_id", flat=True).first())
+        if not office_id:
+            return Response({"error": "no_office"}, status=400)
+        
+        try:
+            office = Office.objects.get(id=office_id)
+        except Office.DoesNotExist:
+            return Response({"error": "office_not_found"}, status=404)
+        
+        res = ensure_subscription_matches_roles(office, request.user.email, create_checkout_if_needed=True,)
+        if isinstance(res, dict) and res.get("checkout_url"):
+            return Response({"checkout_url" : res["checkout_url"]}, status=200)
+        
+        return Response({"error": "already_active"}, status=400)

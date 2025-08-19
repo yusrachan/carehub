@@ -1,4 +1,4 @@
-from datetime import timezone
+from django.utils import timezone
 import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
@@ -9,7 +9,10 @@ class CustomUserManager(BaseUserManager):
             raise ValueError('L’e-mail est obligatoire')
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
-        user.set_password(password)
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
         user.save(using=self._db)
         return user
     
@@ -47,9 +50,13 @@ class UserOfficeRole(models.Model):
     user = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
     office = models.ForeignKey('offices.Office', on_delete=models.CASCADE)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         unique_together = ('user', 'office')
+
+def generate_invitation_token() -> str:
+    return uuid.uuid4().hex
 
 class Invitation(models.Model):
     ROLE_CHOICES = [
@@ -60,7 +67,7 @@ class Invitation(models.Model):
     email = models.EmailField()
     office = models.ForeignKey('offices.Office', on_delete=models.CASCADE)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
-    token = models.CharField(max_length=64, unique=True, default=uuid.uuid4)
+    token = models.CharField(max_length=64, unique=True, default=generate_invitation_token, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     used = models.BooleanField(default=False)
     expires_at = models.DateTimeField()

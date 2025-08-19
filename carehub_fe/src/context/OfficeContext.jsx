@@ -31,8 +31,8 @@ export function OfficeProvider({ children }) {
         else localStorage.removeItem(LS_KEY);
       } catch (e) {
         console.warn("OfficeContext: /offices/my/ failed", e);
-        setOffices([]);
-        setCurrentOfficeId(null);
+        // setOffices([]);
+        // setCurrentOfficeId(null);
       } finally {
         if (alive) setLoading(false);
       }

@@ -23,7 +23,7 @@ class UserOfficeRoleSerializer(serializers.ModelSerializer):
         fields = ['office_id', 'role']
 
 class UserSerializer(serializers.ModelSerializer):
-    roles = UserOfficeRoleSerializer(source='userofficerole_set', many=True)
+    roles = UserOfficeRoleSerializer(source='userofficerole_set', many=True, read_only=True)
     
     class Meta:
         model = User

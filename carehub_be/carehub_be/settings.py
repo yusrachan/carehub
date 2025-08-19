@@ -31,6 +31,12 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# EMAIL_HOST = "smtp.mailtrap.io"
+# EMAIL_HOST_USER = "xxx"
+# EMAIL_HOST_PASSWORD = "xxx"
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+DEFAULT_FROM_EMAIL = 'no-reply@carehub.test'
 
 # Application definition
 
@@ -97,6 +103,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    "subscriptions.middleware.SubscriptionGateMiddleware",
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
