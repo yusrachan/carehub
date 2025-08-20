@@ -123,25 +123,25 @@ export default function RegisterJoin() {
             <h2 className="text-xl font-bold mb-4">Créer votre compte et rejoindre</h2>
             <div className="mb-2">
                 <label className="block text-sm text-gray-700">Cabinet</label>
-                <input type="text" className="w-full border rounded px-2 py-1" value={fields.office_name || ""} readOnly />
+                <input type="text" className="w-full bg-white border rounded px-2 py-1" value={fields.office_name || ""} readOnly />
             </div>
             <div className="mb-2">
                 <label className="block text-sm text-gray-700">E-mail</label>
-                <input type="email" className="w-full border rounded px-2 py-1" value={fields.email} readOnly />
+                <input type="email" className="w-full bg-white border rounded px-2 py-1" value={fields.email} readOnly />
             </div>
             <div className="mb-2">
                 <label className="block text-sm text-gray-700">Prénom</label>
-                <input type="text" className="w-full border rounded px-2 py-1" value={fields.name} readOnly />
+                <input type="text" className="w-full bg-white border rounded px-2 py-1" value={fields.name} readOnly />
             </div>
             <div className="mb-4">
                 <label className="block text-sm text-gray-700">Nom</label>
-                <input type="text" className="w-full border rounded px-2 py-1" value={fields.surname} readOnly />
+                <input type="text" className="w-full bg-white border rounded px-2 py-1" value={fields.surname} readOnly />
             </div>
             <div className="mb-4">
                 <label className="block text-sm text-gray-700">Mot de passe</label>
                 <input
                 type="password"
-                className="w-full border rounded px-2 py-2"
+                className="w-full bg-white border rounded px-2 py-2"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required/>

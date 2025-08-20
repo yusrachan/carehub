@@ -51,6 +51,7 @@ class UserOfficeRole(models.Model):
     office = models.ForeignKey('offices.Office', on_delete=models.CASCADE)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     is_active = models.BooleanField(default=True)
+    is_billing_admin = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('user', 'office')

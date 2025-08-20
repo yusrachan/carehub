@@ -5,14 +5,8 @@ from django.utils import timezone
 from offices.models import Office
 
 class Patient(models.Model):
-    GENDER_CHOICES = [
-        ('M', 'Homme'),
-        ('F', 'Femme'),
-        ('O', 'Autre'),
-    ]
     name = models.CharField(max_length=50)
     surname = models.CharField(max_length=50)
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True, null=True)
     birth_date = models.DateField()
     street = models.CharField(max_length=255)
     street_number = models.CharField(max_length=10)
@@ -20,11 +14,13 @@ class Patient(models.Model):
     zipcode = models.CharField(max_length=10)
     city = models.CharField(max_length=100)
     telephone = models.CharField(max_length=20)
-    email = models.EmailField(max_length=100)
+    email = models.EmailField(max_length=100, blank=True, null=True)
     medical_history = models.TextField(blank=True)
     office = models.ForeignKey(Office, on_delete=models.CASCADE, blank=True, null=True)
     is_deleted = models.BooleanField(default=False)
     last_contact_date = models.DateField(default=timezone.now)
+
+    is_tiers_payant = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

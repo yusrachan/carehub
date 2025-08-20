@@ -73,7 +73,7 @@ export default function InviteSecretaryForm({ officeId, onClose, onSuccess }) {
     if (step === "check") {
         return (
         <form onSubmit={handleCheck} className="space-y-4">
-            <h3 className="text-lg font-semibold">Inviter une secrétaire</h3>
+            <h3 className="text-lg font-semibold">Inviter un(e) secrétaire</h3>
             <p className="text-sm text-gray-600">
                 Entre son e-mail. S’il existe déjà un compte, on te propose de l’inviter directement.
             </p>
@@ -128,7 +128,7 @@ export default function InviteSecretaryForm({ officeId, onClose, onSuccess }) {
 
     return (
         <form onSubmit={inviteNew} className="space-y-4">
-            <h3 className="text-lg font-semibold">Nouvelle collaboratrice</h3>
+            <h3 className="text-lg font-semibold">Nouveau collaborateur</h3>
             <div className="grid sm:grid-cols-2 gap-3">
                 <input
                 value={form.name}

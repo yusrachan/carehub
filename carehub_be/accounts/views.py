@@ -2,6 +2,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.shortcuts import render
 from django.core.mail import send_mail
+from django.core.exceptions import FieldDoesNotExist
 from django.utils import timezone
 from django.db import transaction
 from rest_framework import generics, status, permissions
@@ -389,14 +390,29 @@ def register_join(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def office_members(request, office_id):
-    uors = UserOfficeRole.objects.filter(office_id=office_id, is_active=True)
-    members = [
-        {
-            "email": uor.user.email,
-            "name": uor.user.name,
-            "surname": uor.user.surname,
+    # 1) L’utilisateur doit appartenir au cabinet
+    if not UserOfficeRole.objects.filter(user=request.user, office_id=office_id).exists():
+        return Response({"detail": "Forbidden"}, status=403)
+
+    # 2) Charge les rôles + user sans N+1
+    qs = UserOfficeRole.objects.select_related("user").filter(office_id=office_id)
+
+    # 3) Si le champ is_active existe, ne renvoie que les liens actifs
+    try:
+        UserOfficeRole._meta.get_field("is_active")
+        qs = qs.filter(is_active=True)
+    except FieldDoesNotExist:
+        pass
+
+    # 4) Sérialise proprement
+    members = []
+    for uor in qs:
+        u = uor.user
+        members.append({
+            "email": u.email,
+            "name": u.name or "",
+            "surname": u.surname or "",
             "role": uor.role,
-        }
-        for uor in uors
-    ]
+        })
+
     return Response(members)

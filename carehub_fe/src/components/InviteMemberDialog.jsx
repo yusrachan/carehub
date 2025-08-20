@@ -74,7 +74,7 @@ export default function InviteMemberDialog({ isOpen, onClose, officeId, onSucces
                     ) : selectedRole === "practitioner" || selectedRole === "manager"? (
                         <InvitePractitionerForm officeId={officeId} role={selectedRole} onClose={handleClose} onSuccess={onSuccess} />
                     ) : (
-                        <InviteByEmailForm officeId={officeId} role="secretary" onClose={handleClose} onSuccess={onSuccess} />                        
+                        <InviteSecretaryForm  officeId={officeId} role="secretary" onClose={handleClose} onSuccess={onSuccess} />                        
                     )}
             </DialogContent>
         </Dialog>
