@@ -28,3 +28,21 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'name', 'email', 'roles', 'surname']
+
+
+class PractitionerLiteSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ("id", "name")
+
+    def get_name(self, obj):
+        full = getattr(obj, "get_full_name", None)
+        if callable(full):
+            n = obj.get_full_name()
+            if n:
+                return n
+        parts = [getattr(obj, "name", ""), getattr(obj, "surname", "")]
+        nm = " ".join([p for p in parts if p]).strip()
+        return nm or getattr(obj, "username", f"user-{obj.pk}")

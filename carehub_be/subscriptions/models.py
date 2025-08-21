@@ -1,6 +1,6 @@
 from django.db import models
 from offices.models import Office
-from datetime import date
+from datetime import date, datetime
 from django.utils import timezone
 
 class Subscription(models.Model):
@@ -61,9 +61,23 @@ class Subscription(models.Model):
     def is_active(self):
         if getattr(self, 'stripe_status', None) in ('trialing', 'active'):
             return True
-        if self.grace_until and timezone() <= self.grace_until:
+        if self.grace_until and timezone.now() <= self.grace_until:
             return True
         if self.stripe_status in ('past_due', 'unpaid', 'paused', 'canceled', 'incomplete', 'incomplete_expired'):
             return False
         
-        return bool(getattr(self,'start_date', None) and getattr(self, 'end_date', None) and self.start_date <= date.today() <= self.end_date)
+        return bool(self.start_date and self.end_date and self.start_date <= date.today() <= self.end_date)
+    
+@property
+def is_paid(self) -> bool:
+    return bool(getattr(self.office, "is_paid", False))
+
+@property
+def status(self) -> str:
+    return self.stripe_status or self.state or ""
+
+@property
+def current_period_end(self):
+    if self.end_date:
+        return datetime.combine(self.end_date, datetime.min.time(), tzinfo=timezone.get_current_timezone())
+    return self.grace_until

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from accounts.views import RegisterView
+from accounts.views import PractitionersList, RegisterView
 
 urlpatterns = [
     path('api/', include('accounts.urls')),
@@ -15,6 +15,7 @@ urlpatterns = [
 
     path('api/offices/', include('offices.urls')),
     path('api/agenda/', include('agenda.urls')),
+    path('api/practitioners/', PractitionersList.as_view()),
     path('api/subscriptions/', include('subscriptions.urls')),
     path('api/invoices/', include('invoices.urls')),
     path('api/prescriptions/', include('prescriptions.urls')),

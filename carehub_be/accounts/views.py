@@ -1,24 +1,26 @@
 from datetime import timedelta
+
 from django.conf import settings
 from django.shortcuts import render
 from django.core.mail import send_mail
 from django.core.exceptions import FieldDoesNotExist
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import Q
+
 from rest_framework import generics, status, permissions
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
+
 import stripe
 from subscriptions.services import ensure_subscription_matches_roles
-from subscriptions.utils import can_activate_one_more
 from subscriptions.models import Subscription
 from offices.models import Office
 from .models import Invitation, User, UserOfficeRole
-from .serializers import RegisterSerializer, UserSerializer
+from .serializers import PractitionerLiteSerializer, RegisterSerializer, UserSerializer
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 FRONTEND_URL = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
@@ -416,3 +418,29 @@ def office_members(request, office_id):
         })
 
     return Response(members)
+
+class PractitionersList(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # office via header ou paramètre
+        office_id = request.headers.get("X-Office-Id") or request.query_params.get("office")
+        qs = User.objects.all()
+
+        # Filtrer par rôle praticien via la relation userofficerole
+        qs = qs.filter(userofficerole__role="practitioner").distinct()
+
+        if office_id:
+            qs = qs.filter(userofficerole__office_id=office_id)
+
+        # (optionnel) recherche texte ?q=...
+        q = request.query_params.get("q")
+        if q:
+            qs = qs.filter(
+                Q(name__icontains=q) |
+                Q(surname__icontains=q) |
+                Q(username__icontains=q)
+            )
+
+        data = PractitionerLiteSerializer(qs.order_by("surname","name"), many=True).data
+        return Response(data)
