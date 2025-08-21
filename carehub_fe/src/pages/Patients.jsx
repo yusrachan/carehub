@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { Grid3X3, List, Plus, Search } from "lucide-react";
 import { useOffice } from "../context/OfficeContext"
+import { useNavigate } from "react-router-dom";
 
 function ViewToggle({ view, setView }) {
     return (
@@ -223,8 +224,16 @@ function AddPatientDialog({ open, onClose, onCreated }) {
 }
 
 function PatientCard({ p }) {
+    const navigate = useNavigate()
+    const go = () => navigate(`/patients/${p.id}`)
+
     return(
-        <div className="rounded-xl border p-4 bg-white">
+        <div 
+        className="rounded-xl border p-4 bg-white cursor-pointer hover:shadow-md transition-shadow outline-none focus:ring-2 focus:ring-[#466896]"
+        role="button"
+        tabIndex={0}
+        onClick={go}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && go()}>
             <div className="font-medium">{p.surname} {p.name}</div>
             <div className="text-sm text-gray-600">
                 {p.email || "—"} • {p.telephone || "—"}
@@ -246,6 +255,7 @@ function PatientCard({ p }) {
 }
 
 export default function Patients() {
+    const navigate = useNavigate()
     const { currentOffice } = useOffice()
     const [list, setList] = useState([])
     const [loading, setLoading] = useState(true)
@@ -331,7 +341,13 @@ export default function Patients() {
                     </thead>
                     <tbody>
                         {list.map((p) => (
-                            <tr key={p.id} className="border-b last:border-b-0">
+                            <tr 
+                            key={p.id} 
+                            role="button"
+                            className="border-b last:border-b-0 cursor-pointer hover:shadow-md transition-shadow outline-none focus:ring-2 focus:ring-[#466896]"
+                            tabIndex={0}
+                            onClick={() => navigate(`/patients/${p.id}`)}
+                            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && navigate(`/patients/${p.id}`)}>
                                 <td className="px-4 py-3 font-medium">{p.surname} {p.name}</td>
                                 <td className="px-4 py-3">{p.email || "—"}</td>
                                 <td className="px-4 py-3">{p.telephone || "—"}</td>
@@ -347,7 +363,6 @@ export default function Patients() {
 
     return (
         <div className="p-6 space-y-6">
-            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Patients</h1>
@@ -361,7 +376,6 @@ export default function Patients() {
                 </button>
             </div>
 
-            {/* Barre outils */}
             <div className="flex flex-col md:flex-row md:items-center gap-4">
                 <div className="relative md:flex-1 max-w-xl">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -395,10 +409,8 @@ export default function Patients() {
                 </div>
             </div>
 
-            {/* Contenu */}
             <div className="rounded-2xl border bg-white">{body}</div>
 
-            {/* Modal ajout */}
             <AddPatientDialog
                 open={openAdd}
                 onClose={() => setOpenAdd(false)}

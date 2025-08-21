@@ -14,6 +14,7 @@ import RegisterJoin from "./pages/RegisterJoin";
 import TeamPage from "./pages/TeamPage";
 import SettingsPage from "./pages/Settings/SettingsPage";
 import Paywall from "./pages/Paywall";
+import PatientRecord from "./pages/PatientRecord";
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
         <Route element={<PrivateLayout/>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/patients" element={<Patients />} />
+          <Route path="/patients/:id" element={<PatientRecord />} />
           <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/invoices" element={<Invoices />} />
           <Route path="/invoices/new" element={<NewInvoice />} />
