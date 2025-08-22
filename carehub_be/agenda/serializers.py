@@ -20,6 +20,7 @@ class AgendaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Agenda
         fields = '__all__'
+        extra_kwargs = { 'office': {'read_only': True}, }
 
     def validate(self, attrs):
         instance = getattr(self, 'instance', None)
@@ -91,6 +92,11 @@ class AgendaSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context.get('request')
+        print("[DEBUG create] vd keys:", list(validated_data.keys()))
+        print("[DEBUG create] patient:", validated_data.get('patient'),
+            "prescription:", validated_data.get('prescription'),
+            "pathology_category:", validated_data.get('pathology_category'),
+            "place:", validated_data.get('place'))
         pres = validated_data.get('prescription')
 
         if pres:

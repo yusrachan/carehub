@@ -6,6 +6,7 @@ from accounts.views import PractitionersList, RegisterView
 urlpatterns = [
     path('api/', include('accounts.urls')),
     path('api/', include('patients.urls')),
+    path('api/', include('billing.urls')),
 
     path('admin/', admin.site.urls),
     path('register/', RegisterView.as_view(), name='register'),

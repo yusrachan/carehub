@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight, Plus, Settings, Clock, AlertCircle, User, Us
 import { useOffice } from "../context/OfficeContext";
 import { api } from "../api";
 
+import ProgressiveAppointmentForm from "../components/appointment-form/ProgressiveAppointmentForm"
+
 const ENDPOINTS = {
     practitioners: "/practitioners/",
     agenda: "/agenda/",
@@ -48,10 +50,11 @@ function ViewSelector({ view, setView }) {
 
 function PractitionerFilter({ practitioners, selected, onChange }) {
     const toggle = (id) => {
-        if (selected.includes(id)) onChange(selected.filter((x) => x !== id));
-        else onChange([...selected, id])
+        const sid = String(id)
+        if (selected.includes(id)) onChange(selected.filter((x) => x !== sid));
+        else onChange([...selected, sid])
     }
-    const all = () => onChange(practitioners.map((p) => p.id))
+    const all = () => onChange(practitioners.map((p) => String(p.id)))
     const none = () => onChange([])
 
     return (
@@ -63,8 +66,8 @@ function PractitionerFilter({ practitioners, selected, onChange }) {
             </div>
             <div className="flex flex-wrap gap-2">
                 {practitioners.map((p) => (
-                    <label key={p.id} className={cls("px-2 py-1 rounded border text-sm cursor-pointer select-none", selected.includes(p.id) ? "bg-blue-50 border-blue-200" : "bg-white hover:bg-gray-50")}>
-                        <input type="checkbox" className="mr-1 align-middle" checked={selected.includes(p.id)} onChange={() => toggle(p.id)} />
+                    <label key={p.id} className={cls("px-2 py-1 rounded border text-sm cursor-pointer select-none", selected.includes(String(p.id)) ? "bg-blue-50 border-blue-200" : "bg-white hover:bg-gray-50")}>
+                        <input type="checkbox" className="mr-1 align-middle" checked={selected.includes(String(p.id))} onChange={() => toggle(p.id)} />
                         {p.name}
                     </label>
                 ))}
@@ -119,7 +122,7 @@ function CalendarSettingsInline({ startHour, endHour, onChange }) {
 
 function CalendarGrid({ date, appointments, practitioners, selectedPractitioners, startHour, endHour, onSlotClick, onEventClick, }) {
     const hours = useMemo(() => Array.from({ length: (endHour - startHour) +1 }, (_, i) => startHour + i), [startHour, endHour])
-    const visiblePractitioners = practitioners.filter((p) => selectedPractitioners.includes(p.id))
+    const visiblePractitioners = practitioners.filter((p) => selectedPractitioners.includes(String(p.id)))
 
     const slotHeight = 24
 
@@ -163,7 +166,7 @@ function CalendarGrid({ date, appointments, practitioners, selectedPractitioners
                         ))}
 
                         {eventsToday
-                            .filter((e) => String(e.practitioner) === String(p.id) || String(e.practitioner) === String(p.id))
+                            .filter((e) => String(e.practitioner) === String(p.id))
                             .map((e) => {
                                 const startHM = e.startTime || e.time || (e.app_date ? new Date(e.app_date).toTimeString().slice(0,5) : "09:00");
                                 const top = topForHM(startHM);
@@ -424,10 +427,10 @@ export default function Agenda() {
                 try {
                     const raw = localStorage.getItem("appointments_selected_practitioners")
                     const saved = raw ? JSON.parse(raw) : null
-                    const allIds = list.map((p) => p.id)
-                    setSelectedPractitioners(Array.isArray(saved) && saved.length ? saved.filter((id) => allIds.includes(id)) : allIds)
+                    const allIds = list.map((p) => String(p.id))
+                    setSelectedPractitioners(Array.isArray(saved) && saved.length ? saved.map(String).filter((id) => allIds.includes(id)) : allIds)
                 } catch {
-                    setSelectedPractitioners(list.map((p) => p.id))
+                    setSelectedPractitioners(list.map((p) => String(p.id)))
                 }
             } catch (e) {
                 console.error(e)
@@ -488,10 +491,19 @@ export default function Agenda() {
         else setLoading(false)
     }, [range, selectedPractitioners, practitioners, currentOffice]);
 
-    const filteredAppointments = useMemo(() => appointments.filter((a) => {
-            const pid = String(a.practitioner || a.practitioner || "");
-            return selectedPractitioners.length ? selectedPractitioners.includes(pid) : true;
-    }),[appointments, selectedPractitioners]);
+    const selectedSet = useMemo(
+        () => new Set((selectedPractitioners || []).map(String)),
+        [selectedPractitioners]
+    );
+
+    const filteredAppointments = useMemo(
+        () =>
+            appointments.filter((a) => {
+                const pid = a?.practitioner != null ? String(a.practitioner) : "";
+                return selectedSet.size ? selectedSet.has(pid) : true;
+            }),
+            [appointments, selectedSet]
+    );
 
     function navigateDate(dir) {
         const d = new Date(currentDate);
@@ -592,13 +604,13 @@ export default function Agenda() {
                     <AlertCircle className="w-4 h-4"/> {err}
                 </div>
             )}
-            <NewAppointmentModal
-            open={modalOpen}
+            <ProgressiveAppointmentForm
+            isOpen={modalOpen}
             onClose={() => setModalOpen(false)}
-            onConfirm={handleCreated}
-            preset={preset}
-            practitioners={practitioners}
-            defaultDate={currentDate}/>
+            timeSlot={preset?.time}
+            selectedPractitioner={preset?.practitioner}
+            selectedDate={preset?.date ? preset.date.toISOString().slice(0,10) : undefined}
+            onCreated={handleCreated}/>
         </div>
     )
 }

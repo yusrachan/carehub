@@ -38,7 +38,7 @@ export default function SettingsPage() {
       <div>
         {tab === 'profile' && <ProfileTab />}
         {tab === 'employees' && <EmployeesTab />}
-        {tab === 'subscription' && <SubscriptionTab />} {/* 👈 rendu de l’onglet */}
+        {tab === 'subscription' && <SubscriptionTab />}
       </div>
     </div>
   );

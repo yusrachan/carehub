@@ -28,6 +28,7 @@ class PathologyDetail(models.Model):
     hon_presta = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     hon_depla = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     hon_dossier = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    hon_total = models.DecimalField(max_digits=8, decimal_places=2, default=0)
 
     reimb_not_bim = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     reimb_bim = models.DecimalField(max_digits=8, decimal_places=2, default=0)
