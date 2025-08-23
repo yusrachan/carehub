@@ -32,12 +32,11 @@ class Command(BaseCommand):
                 self.stdout.write("Aucune catégorie orpheline à supprimer.")
 
         CATEGORIES = [
-            {"code": "PC", "label": "Pathologie courante"},
-            {"code": "FA", "label": "Pathologie aiguë"},
-            {"code": "FB", "label": "Pathologie chronique"},
-            {"code": "Lymph", "label": "Pathologie lourde"},
+            {"code": "PC", "label": "Courante"},
+            {"code": "FA", "label": "Aiguë"},
+            {"code": "FB", "label": "Chronique"},
             {"code": "Pallia", "label": "Palliatif"},
-            {"code": "E", "label": "Post-natal"},
+            {"code": "E", "label": "Lourde"},
         ]
 
         if isinstance(CATEGORIES, list):
@@ -85,12 +84,6 @@ class Command(BaseCommand):
             dict(cat="FB", smin=81, smax=None,code="563651", dossier=None,
                  presta="30.80", hon_dossier=None, total="30.80", remb_nb="25.62", remb_b="29.12", tm_nb="5.18", tm_b="2.68"),
 
-            # --- Lymph ---
-            dict(cat="Lymph", smin=1, smax=1, code="—", dossier="—",
-                 presta="30.80", hon_dossier="32.86", total="77.99", remb_nb="72.26", remb_b="75.99", tm_nb="5.73", tm_b="2.00"),
-            dict(cat="Lymph", smin=2,  smax=60, code="—", dossier=None,
-                 presta="30.80", hon_dossier=None, total="45.13", remb_nb="39.63", remb_b="43.13", tm_nb="5.50", tm_b="2.00"),
-
             # --- E (post-natal) ---
             dict(cat="E", smin=1, smax=1, code="560652", dossier="560711",
                  presta="30.80", hon_dossier="32.86", total="63.66", remb_nb="59.78", remb_b="62.28", tm_nb="3.88", tm_b="1.38"),
@@ -103,13 +96,11 @@ class Command(BaseCommand):
         ]
 
         def D(x):
-            # Montants: retourne Decimal('0.00') si vide/None/—/"/"
             if x in (None, "", "—", "/"):
                 return Decimal("0.00")
             return Decimal(str(x).replace(",", "."))
 
         def S(x):
-            # Codes texte: None si vide/— sinon str
             if x in (None, "", "—", "/"):
                 return None
             return str(x)

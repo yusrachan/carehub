@@ -38,6 +38,13 @@ function sameDay(d1, d2) {
     return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate()
 }
 
+function getPatientId(e) {
+    if (e?.patient_id != null) return e.patient_id;
+    if (typeof e?.patient === "number") return e.patient;
+    if (typeof e?.patient === "object" && e.patient) return e.patient.id;
+    return null;
+}
+
 function ViewSelector({ view, setView }) {
     return (
         <select value={view} onChange={(e) => setView(e.target.value)} className="border rounded-lg px-2 py-1 bg-white">
@@ -49,10 +56,13 @@ function ViewSelector({ view, setView }) {
 }
 
 function PractitionerFilter({ practitioners, selected, onChange }) {
+    const selectedSet = new Set(selected.map(String))
     const toggle = (id) => {
         const sid = String(id)
-        if (selected.includes(id)) onChange(selected.filter((x) => x !== sid));
-        else onChange([...selected, sid])
+        const next = new Set(selectedSet)
+        if (next.has(sid)) next.delete(sid);
+        else next.add(sid);
+        onChange(Array.from(next));
     }
     const all = () => onChange(practitioners.map((p) => String(p.id)))
     const none = () => onChange([])
@@ -65,12 +75,16 @@ function PractitionerFilter({ practitioners, selected, onChange }) {
                 ))}
             </div>
             <div className="flex flex-wrap gap-2">
-                {practitioners.map((p) => (
-                    <label key={p.id} className={cls("px-2 py-1 rounded border text-sm cursor-pointer select-none", selected.includes(String(p.id)) ? "bg-blue-50 border-blue-200" : "bg-white hover:bg-gray-50")}>
-                        <input type="checkbox" className="mr-1 align-middle" checked={selected.includes(String(p.id))} onChange={() => toggle(p.id)} />
-                        {p.name}
-                    </label>
-                ))}
+                {practitioners.map((p) => {
+                    const sid = String(p.id);
+                    const checked = selectedSet.has(sid);
+                    return(
+                        <label key={p.id} className={cls("px-2 py-1 rounded border text-sm cursor-pointer select-none", selected.includes(String(p.id)) ? "bg-blue-50 border-blue-200" : "bg-white hover:bg-gray-50")}>
+                            <input type="checkbox" className="mr-1 align-middle" checked={checked} onChange={() => toggle(p.id)} />
+                            {p.name}
+                        </label>
+                    )
+                })}
                 <button onClick={all} className="px-2 py-1 rounded border text-sm bg-white hover:bg-gray-50">Tout</button>
                 <button onClick={none} className="px-2 py-1 rounded border text-sm bg-white hover:bg-gray-50">Aucun</button>
             </div>
@@ -120,7 +134,7 @@ function CalendarSettingsInline({ startHour, endHour, onChange }) {
     )
 }
 
-function CalendarGrid({ date, appointments, practitioners, selectedPractitioners, startHour, endHour, onSlotClick, onEventClick, }) {
+function CalendarGrid({ date, appointments, practitioners, selectedPractitioners, startHour, endHour, onSlotClick, onEventClick, patientNames }) {
     const hours = useMemo(() => Array.from({ length: (endHour - startHour) +1 }, (_, i) => startHour + i), [startHour, endHour])
     const visiblePractitioners = practitioners.filter((p) => selectedPractitioners.includes(String(p.id)))
 
@@ -165,19 +179,50 @@ function CalendarGrid({ date, appointments, practitioners, selectedPractitioners
                             <div key={`${p.id}-${h}`} className="border-b" style={{ height: slotHeight * 2 }} />
                         ))}
 
-                        {eventsToday
-                            .filter((e) => String(e.practitioner) === String(p.id))
-                            .map((e) => {
+                        <div className="absolute inset-0 z-0">
+                            {hours.map((h) => (
+                                [0,30].map((m) => {
+                                const hm = hmFromMinutes(h*60 + m);
+                                const top = ((h*60 + m - startHour*60) / 30) * slotHeight;
+                                return (
+                                    <div
+                                    key={`${p.id}-${hm}`}
+                                    className="absolute left-1 right-1 h-6 group"
+                                    style={{ top }}
+                                    onClick={() => onSlotClick && onSlotClick(hm, p.id, date)}
+                                    title={`Créer ${hm} – ${p.name}`}>
+                                        <div className="hidden group-hover:block absolute inset-0 rounded bg-blue-50/70 border border-blue-200" />
+                                    </div>
+                                );
+                                })
+                            ))}
+                        </div>
+
+                        <div className="absolute inset-0 z-10">
+                            {eventsToday
+                                .filter((e) => String(e.practitioner) === String(p.id))
+                                .map((e) => {
                                 const startHM = e.startTime || e.time || (e.app_date ? new Date(e.app_date).toTimeString().slice(0,5) : "09:00");
                                 const top = topForHM(startHM);
                                 const height = Math.max(20, ((e.duration || e.duration_minutes || 30) / 30) * slotHeight);
-                                const title = e.patient_name || e.patient || (e.patient_id ? `Patient #${e.patient_id}` : "Séance");
+                                const pid = getPatientId(e);
+                                const title =
+                                e.patient_name ||
+                                (pid ? patientNames?.[String(pid)] : null) ||
+                                e.patient_full_name ||
+                                e.patient_label ||
+                                (typeof e.patient === "object" && (e.patient.name || e.patient.full_name)) ||
+                                (pid ? `Patient #${pid}` : "Séance");
+
                                 return (
                                     <div
                                     key={e.id}
                                     className="absolute left-1 right-1 rounded-lg shadow-sm border overflow-hidden cursor-pointer"
                                     style={{ top, height, background: "#eff6ff", borderColor: "#bfdbfe" }}
-                                    onClick={() => onEventClick && onEventClick(e)}>
+                                    onClick={(evt) => {
+                                        evt.stopPropagation();
+                                        onEventClick && onEventClick(e);
+                                    }}>
                                         <div className="px-2 py-1 text-xs font-medium text-blue-900 flex items-center gap-1">
                                             <Clock className="w-3 h-3" /> {startHM}
                                         </div>
@@ -187,8 +232,8 @@ function CalendarGrid({ date, appointments, practitioners, selectedPractitioners
                                         </div>
                                     </div>
                                 );
-                            })
-                        }
+                            })}
+                        </div>
 
                         {hours.map((h) => (
                             [0,30].map((m) => {
@@ -369,7 +414,7 @@ function DetailsPanel({ appointment, onClose }) {
         <div className="h-full flex items-center justify-center text-sm text-gray-500">Sélectionnez un rendez-vous</div>
     )
     
-    const title = appointment.patient_name || appointment.patient || (appointment.patient_id ? `Patient #${appointment.patient_id}` : "Séance")
+    const title = appointment.patientLabel || appointment.patient_name || appointment.patient || (appointment.patient_id ? `Patient #${appointment.patient_id}` : "Séance")
     const startHM = appointment.startTime || appointment.time || (appointment.app_date ? new Date(appointment.app_date).toTimeString().slice(0,5) : "—")
 
     return (
@@ -381,7 +426,7 @@ function DetailsPanel({ appointment, onClose }) {
             <div className="rounded-lg border bg-white p-3 space-y-2">
                 <div className="flex items-center gap-2"><User className="w-4 h-4"/> <span className="font-medium">{title}</span></div>
                 <div className="flex items-center gap-2"><Clock className="w-4 h-4"/> {startHM}</div>
-                <div className="flex items-center gap-2"><Users className="w-4 h-4"/> {appointment.practitioner}</div>
+                <div className="flex items-center gap-2"><Users className="w-4 h-4"/> {appointment.practitionerLabel || appointment.practitioner}</div>
                 <div className="flex items-center gap-2"><MapPin className="w-4 h-4"/> {appointment.room || appointment.place || "—"}</div>
                 <div className="text-sm text-gray-600">Durée : {appointment.duration || appointment.duration_minutes || 30} min</div>
                 {appointment.coverage_source && (
@@ -412,7 +457,30 @@ export default function Agenda() {
     const [selectedAppointment, setSelectedAppointment] = useState(null)
     const [modalOpen, setModalOpen] = useState(false)
     const [preset, setPreset] = useState(null)
+    const [patientNames, setPatientNames] = useState({});
 
+    async function hydratePatientNames(appts) {
+        const headers = currentOffice ? { "X-Office-Id": String(currentOffice.id) } : undefined;
+        const ids = Array.from(new Set(appts.map(getPatientId).filter(Boolean).map(String)));
+        const missing = ids.filter(id => !patientNames[id]);
+        if (!missing.length) return;
+
+        const pairs = await Promise.all(missing.map(async (id) => {
+            try {
+            const { data } = await api.get(`/patients/${id}/`, { headers });
+            const name =
+                data.full_name ||
+                [data.name, data.surname].filter(Boolean).join(" ").trim() ||
+                data.display_name ||
+                data.email ||
+                `Patient #${id}`;
+            return [id, name];
+            } catch {
+            return [id, `Patient #${id}`];
+            }
+        }));
+        setPatientNames(prev => ({ ...prev, ...Object.fromEntries(pairs) }));
+    }
     useEffect(() => {
         let mounted = true
         async function fetchPractitioners() {
@@ -467,33 +535,47 @@ export default function Agenda() {
     useEffect(() => {
         let mounted = true
         async function fetchAgenda() {
-            try {
-                setLoading(true); setErr("");
-                const headers = currentOffice ? { "X-Office-Id": String(currentOffice.id) } : undefined;
-                const params = { start: range.start, end: range.end };
-                if (selectedPractitioners.length) params.practitioners = selectedPractitioners.join(",");
-                const { data } = await api.get(ENDPOINTS.agenda, { params, headers });
-                if (!mounted) return;
-                setAppointments(Array.isArray(data) ? data : []);
-            } catch (e) {
-                console.error(e);
-                if (e?.response) {
-                    console.log("403 payload:", e.response.status, e.response.data); // ← important
-                }
-                if (!mounted) return;
-                setErr("Impossible de charger les rendez-vous.");
-                setAppointments([]);
-            } finally {
-                if (mounted) setLoading(false);
+        try {
+        setLoading(true);
+        setErr("");
+
+        const headers = currentOffice ? { "X-Office-Id": String(currentOffice.id) } : undefined;
+        const params = { start: range.start, end: range.end };
+        if (selectedPractitioners.length) params.practitioners = selectedPractitioners.join(",");
+
+        const { data } = await api.get(ENDPOINTS.agenda, { params, headers });
+        if (!mounted) return;
+
+        const appts = Array.isArray(data) ? data : [];
+        setAppointments(appts);
+        await hydratePatientNames(appts);
+        } catch (e) {
+            console.error(e);
+            if (e?.response) {
+                console.log("403 payload:", e.response.status, e.response.data);
             }
+            if (!mounted) return;
+            setErr("Impossible de charger les rendez-vous.");
+            setAppointments([]);
+        } finally {
+            if (mounted) setLoading(false);
         }
-        if (practitioners.length) fetchAgenda();
-        else setLoading(false)
+    }
+
+    if (practitioners.length) fetchAgenda();
+    else setLoading(false);
+
+    return () => { mounted = false; };
     }, [range, selectedPractitioners, practitioners, currentOffice]);
 
     const selectedSet = useMemo(
         () => new Set((selectedPractitioners || []).map(String)),
         [selectedPractitioners]
+    );
+
+    const practitionersById = useMemo(
+        () => Object.fromEntries(practitioners.map(p => [String(p.id), p])),
+        [practitioners]
     );
 
     const filteredAppointments = useMemo(
@@ -586,7 +668,29 @@ export default function Agenda() {
                         startHour={startHour}
                         endHour={endHour}
                         onSlotClick={handleSlotClick}
-                        onEventClick={(e) => setSelectedAppointment(e)}/>
+                        onEventClick={(e) => {
+                            if (modalOpen) setModalOpen(false);
+
+                            const pObj = practitionersById[String(e.practitioner)];
+                            const practitionerLabel = e.practitioner_name || pObj?.name || `Praticien #${e.practitioner}`;
+                            const pid = getPatientId(e);
+                            const patientLabel =
+                                e.patient_name ||
+                                (pid ? patientNames[String(pid)] : null) ||
+                                e.patient_full_name ||
+                                e.patient_label ||
+                                (typeof e.patient === "object"
+                                ? (e.patient.full_name || e.patient.name)
+                                : null) ||
+                                (pid ? `Patient #${pid}` : "Séance");
+
+                            setSelectedAppointment({
+                                ...e,
+                                practitionerLabel,
+                                patientLabel,
+                            })
+                            patientNames={patientNames}
+                        }}/>
                     ) : (
                         <div className="rounded-xl border bg-white p-6 text-sm text-gray-600">Les vues "Semaine" et "Mois" seront ajoutées plus tard. Utilisez la vue Jour pour l'instant.</div>
                     )}

@@ -1,113 +1,98 @@
-import React, { useState } from "react";
+import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  Calendar,
+  FileText,
+  Settings,
+  LogOut,
+} from "lucide-react";
 import axios from "axios";
-import { useOffice } from "../context/OfficeContext";
-import CurrentOfficeBadge from "./CurrentOfficeBadge";
 import OfficeBadgeMenu from "./OfficeBadgeMenu";
 
-function OfficeSwitcher() {
-  let ctx;
-  try { ctx = useOffice() } catch { return null}
-  const { offices, currentOfficeId, switchOffice, loading } = useOffice()
-
-  if (loading) {
-    return (
-      <div className="mt-4">
-        <div className="h-10 bg-gray-200 rounded-lg animate-pulse" />
-      </div>
-    );
-  }
-
-  if (!offices?.length) return null;
-  if (offices.length === 1) {
-    return (
-      <div className="mt-4">
-        <label className="block text-xs text-gray-600 mb-1">Cabinet</label>
-        <div className="px-3 py-2 rounded-lg bg-white border">{offices[0].name}</div>
-      </div>
-    );
-  }
-
+function SidebarLink({ to, label, Icon }) {
   return (
-    <div className="mt-4">
-      <label htmlFor="office" className="block text-xs text-gray-600 mb-1">
-        Cabinet courant
-      </label>
-      <select
-        id="office"
-        className="w-full border rounded-lg p-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#466896]"
-        value={currentOfficeId || ""}
-        onChange={(e) => switchOffice(e.target.value)}>
-        {offices.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.name}
-          </option>
-        ))}
-      </select>
-    </div>
+    <NavLink
+      to={to}
+      end
+      className={({ isActive }) =>
+        [
+          "group relative flex items-center gap-3 rounded-xl px-3 py-2 select-none",
+          "transition-colors",
+          isActive
+            ? "bg-white text-[#1f3550] shadow-sm ring-1 ring-[#466896]/30"
+            : "text-slate-700 hover:bg-[#466896]/10 hover:text-[#223a57]",
+        ].join(" ")
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-7 w-1.5 rounded-full bg-[#466896]" />
+          )}
+          <Icon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{label}</span>
+        </>
+      )}
+    </NavLink>
   );
 }
 
 export default function Sidebar() {
-  const navigate = useNavigate()
-  const [isOpen, setIsOpen] = useState(true)
-  
-  const linkBase = "block px-4 py-2 rounded-lg transition hover:bg-[#466896] hover:text-white";
-  const linkActive = "bg-[#466896] text-white";
-  const linkInactive = "text-[#333333]";
+    const navigate = useNavigate();
 
-  const links = [
-    { to: "/dashboard", label: "Dashboard" },
-    { to: "/patients", label: "Patients" },
-    { to: "/agenda", label: "Calendrier" },
-    { to: "/invoices", label: "Factures" },
-    { to: "/team", label: "Équipe" },
-    { to: "/settings", label: "Paramètres" },
-  ];
+    const links = [
+      { to: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
+      { to: "/patients", label: "Patients", Icon: Users },
+      { to: "/agenda", label: "Calendrier", Icon: Calendar },
+      { to: "/invoices", label: "Factures", Icon: FileText },
+      { to: "/team", label: "Équipe", Icon: Users },
+      { to: "/settings", label: "Paramètres", Icon: Settings },
+    ];
 
-  const handleSignOut = () => {
-    localStorage.removeItem("access_token")
-    localStorage.removeItem("refresh_token")
-    localStorage.removeItem("current_office_id")
-    delete axios.defaults.headers.common["Authorization"]
-    navigate("/login")
-  }
-  
-  return (
-    <div className="w-64 h-screen bg-[#D9E1E8] p-6 flex flex-col justify-between">
-      <div>
-        <button
-          className="m-4 p-2 text-[#466896] hover:text-[#254a72] focus:outline-none md:hidden" 
-          onClick={() => setIsOpen((v) => !v)}
-          aria-label={isOpen ? "Fermer le menu" : "Ouvrir le menu"}>
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+    const handleSignOut = () => {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("current_office_id");
+      delete axios.defaults.headers.common["Authorization"];
+      navigate("/login");
+    };
 
-        <div className="text-2xl font-bold mb-10 text-[#466896]">CareHub</div>
-        <OfficeBadgeMenu/>
+    return (
+        <aside className="fixed left-0 top-0 h-screen w-72 bg-gradient-to-b from-[#eff4fb] to-[#e8edf4] border-r border-slate-200 flex flex-col">
+          <div className="h-16 px-4 flex items-center border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-9 rounded-xl bg-[#466896] text-white flex items-center justify-center font-bold">
+                C
+              </div>
+              <div className="leading-tight">
+                <div className="font-semibold text-[#466896]">CareHub</div>
+                <div className="text-xs text-slate-500">Gestion cabinet</div>
+              </div>
+            </div>
+          </div>
 
-        <nav className={`space-y-3 mt-6 ${isOpen ? "block": "hidden"} md:block`}>
-          {links.map(({ to, label }) => (
-            <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`} end>
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-      </div>
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="px-4 py-3">
+              <OfficeBadgeMenu />
+            </div>
 
-      <div className="border-t border-sidebar-border pt-4">
-        <button
-          onClick={handleSignOut}
-          className="w-full flex items-center justify-center px-4 py-2 text-[#333333] hover:bg-[#466896] hover:text-white rounded-lg transition">
-            <LogOut className="w-4 h-4 mr-2" />
-            Déconnexion
-          </button>
-      </div>
-    </div>
-  );
+            <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
+              {links.map((l) => (
+                <SidebarLink key={l.to} {...l} />
+              ))}
+            </nav>
+
+            <div className="mt-auto border-t border-slate-200 p-4">
+              <button
+                onClick={handleSignOut}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-slate-700 hover:bg-[#466896]/10 hover:text-[#223a57] transition">
+                <LogOut className="h-4 w-4" />
+                <span>Déconnexion</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+    );
 }
-

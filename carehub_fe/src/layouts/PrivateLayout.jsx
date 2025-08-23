@@ -28,9 +28,9 @@ export default function PrivateLayout() {
 
     return(
         <OfficeProvider>
-            <div className="flex min-h-screen">
+            <div className="min-h-screen">
                 <Sidebar/>
-                <main className="flex-1 p-6">
+                <main className="fixed inset-y-0 right-0 left-72 overflow-y-auto p-6 min-w-0">
                     <Outlet/>
                 </main>
             </div>
