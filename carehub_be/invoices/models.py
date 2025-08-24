@@ -18,7 +18,7 @@ class Invoice(models.Model):
     sending_date = models.DateField(auto_now_add=True)
     due_date = models.DateField()
     paid_date = models.DateField(blank=True, null=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     state = models.CharField(max_length=20, choices=STATE_CHOICES, default='pending')
     reference_number = models.CharField(max_length=100, unique=True, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
@@ -33,14 +33,14 @@ class Invoice(models.Model):
         return total
     
     def save(self, *args, **kwargs):
-        if not self.amount:
-            self.calculate_total_amount()
-            
         if not self.reference_number:
             current_year = datetime.date.today().year
-            last_invoice = Invoice.objects.filter(reference_number__startswith=f"FAC - {current_year}").order_by('id').last()
-            last_number = int(last_invoice.reference_number.split('-')[-1]) if last_invoice and last_invoice.reference_number else 0                
-            
+            last_invoice = Invoice.objects.filter(
+                reference_number__startswith=f"FAC - {current_year}"
+            ).order_by('id').last()
+            last_number = int(last_invoice.reference_number.split('-')[-1]) if (
+                last_invoice and last_invoice.reference_number
+            ) else 0
             self.reference_number = f"FAC - {current_year} - {last_number + 1:04d}"
 
         super().save(*args, **kwargs)

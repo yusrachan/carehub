@@ -347,7 +347,7 @@ const PatientRecord = () => {
     const Prescription = () => (
         <Section title="Prescriptions médicales" icon={Stethoscope}>
             <div className="flex items-center justify-between mb-3">
-                <div className="text-sm text-gray-600">Gestion simple (placeholder)</div>
+                <div className="text-sm text-gray-600">Gestion simple</div>
                 <button className="px-3 py-2 rounded-lg bg-[#466896] text-white">Nouvelle prescription</button>
             </div>
             <div className="overflow-x-auto">
@@ -425,24 +425,153 @@ const PatientRecord = () => {
         </Section>
     );
 
-    const Billing = () => (
-        <Section title="Facturation" icon={CreditCard}>
-            <div className="grid md:grid-cols-2 gap-4 text-sm">
-                <div>
-                    <div className="text-gray-500">Méthode préférée</div>
-                    <div className="font-medium">{patient.preferred_billing_method || "—"}</div>
-                </div>
-                <div>
-                    <div className="text-gray-500">Dernière facture</div>
-                    <div className="font-medium">{patient.last_invoice || "—"}</div>
-                </div>
-            </div>
-            <div className="mt-4">
-                <button className="px-3 py-2 rounded-lg bg-[#466896] text-white">Créer une facture</button>
-            </div>
-        </Section>
-    );
+    const fmtEUR = (n) =>
+        new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" }).format(Number(n) || 0);
 
+        const statusBadgeClass = (status) => {
+        switch ((status || "").toLowerCase()) {
+            case "paid": return "bg-emerald-100 text-emerald-800 border border-emerald-200";
+            case "pending": return "bg-amber-100 text-amber-800 border border-amber-200";
+            case "overdue": return "bg-rose-100 text-rose-800 border border-rose-200";
+            default: return "bg-slate-100 text-slate-700 border border-slate-200";
+        }
+    }
+
+    const Billing = () => {
+        const [invoices, setInvoices] = useState([]);
+        const [loadingInv, setLoadingInv] = useState(true);
+        const [errInv, setErrInv] = useState("");
+
+        const headers = useMemo(
+            () => (currentOffice ? { "X-Office-Id": String(currentOffice.id) } : undefined),
+            [currentOffice]
+        );
+
+        const fetchInvoices = async () => {
+            if (!patient?.id) return;
+                setLoadingInv(true);
+                setErrInv("");
+            try {
+                const { data } = await api.get(`/invoices/`, { params: { patient: patient.id }, headers });
+                const list = Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : []);
+                setInvoices(list);
+            } catch (e) {
+                console.error(e);
+                setErrInv("Impossible de charger les factures de ce patient.");
+            } finally {
+                setLoadingInv(false);
+            }
+        };
+
+        useEffect(() => { fetchInvoices(); }, [patient?.id]);
+
+        const markPaid = async (id) => {
+            try {
+                await api.post(`/invoices/${id}/mark-paid/`, null, { headers });
+                setInvoices((prev) => prev.map((it) => (it.id === id ? { ...it, state: "paid", paid_date: new Date().toISOString().slice(0,10) } : it)));
+            } catch (e) {
+                console.error(e);
+                alert("Échec: marquer payée.");
+            }
+        };
+
+        const downloadPdf = async (id, ref) => {
+            try {
+                const { data } = await api.get(`/invoices/${id}/download/`, { responseType: "blob", headers });
+                const url = URL.createObjectURL(new Blob([data]));
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${ref || "invoice-"+id}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                console.error(e);
+                alert("Téléchargement impossible.");
+            }
+        };
+
+        return (
+            <Section
+            title="Facturation"
+            icon={CreditCard}
+            right={
+                <div className="flex items-center gap-2">
+                <button onClick={fetchInvoices} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50">Actualiser</button>
+                <button onClick={() => navigate(`/invoices/new?patient=${patient.id}`)} className="px-3 py-2 rounded-lg bg-[#466896] text-white">Créer une facture</button>
+                </div>
+            }>
+                {loadingInv && <div className="text-sm text-gray-500">Chargement…</div>}
+                {errInv && (
+                    <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">{errInv}</div>
+                )}
+
+                {!loadingInv && !invoices.length && !errInv && (
+                    <div className="text-sm text-gray-600">Aucune facture pour ce patient.</div>
+                )}
+
+                {!!invoices.length && (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm border rounded-xl overflow-hidden">
+                            <thead className="bg-gray-50 text-gray-600">
+                                <tr>
+                                    <th className="text-left px-3 py-2">Référence</th>
+                                    <th className="text-left px-3 py-2">Émise le</th>
+                                    <th className="text-left px-3 py-2">Montant</th>
+                                    <th className="text-left px-3 py-2">État</th>
+                                    <th className="text-right px-3 py-2">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {invoices.map((inv) => {
+                                    const ref = inv.reference_number || `FAC-${inv.id}`;
+                                    const date = inv.sending_date ? new Date(inv.sending_date).toLocaleDateString("fr-BE") : "—";
+                                    return (
+                                        <tr key={inv.id} className="border-t">
+                                            <td className="px-3 py-2 font-medium">
+                                                <button
+                                                className="underline hover:opacity-80"
+                                                onClick={() => navigate(`/invoices/${inv.id}`)}>
+                                                    {ref}
+                                                </button>
+                                            </td>
+                                            <td className="px-3 py-2">{date}</td>
+                                            <td className="px-3 py-2">{fmtEUR(inv.amount)}</td>
+                                            <td className="px-3 py-2">
+                                                <span className={`text-xs px-2 py-1 rounded-full ${statusBadgeClass(inv.state)}`}>
+                                                    {inv.state}
+                                                </span>
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {inv.state !== "paid" && (
+                                                        <button onClick={() => markPaid(inv.id)} className="px-2 py-1 rounded-lg border hover:bg-gray-50">
+                                                            Marquer payée
+                                                        </button>
+                                                    )}
+                                                    <button onClick={() => downloadPdf(inv.id, ref)} className="px-2 py-1 rounded-lg border hover:bg-gray-50">
+                                                        Télécharger PDF
+                                                    </button>
+                                                    <button onClick={() => navigate(`/invoices/${inv.id}`)} className="px-2 py-1 rounded-lg border hover:bg-gray-50">
+                                                        Voir
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+
+                        <div className="mt-3 text-xs text-gray-600">
+                            Total: {invoices.length} • Payées: {invoices.filter(i => i.state === "paid").length} • En attente: {invoices.filter(i => i.state === "pending").length} • En retard: {invoices.filter(i => i.state === "overdue").length}
+                        </div>
+                    </div>
+                )}
+            </Section>
+        );
+    };
     
     const handleStatusChange = async (newStatus) => {
         if (!patient) return;

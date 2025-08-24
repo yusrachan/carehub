@@ -9,7 +9,63 @@ const ENDPOINTS = {
     practitioners: "/practitioners/",
     agenda: "/agenda/",
     createAgenda: "/agenda/",
+    updateAgenda: (id) => `/agenda/${id}/`,
+    invoices: "/invoices/",
+    invoicesCreate: "/invoices/create-from-appointments/",
+    invoicesDetail: (id) => `/invoices/${id}/`,
+    invoicesDownload: (id) => `/invoices/${id}/download/`,
 };
+
+const POLICY = {
+    FEE_EUR: 25,
+    validReasons: ["death", "sick_with_note", "first_cancellation"]
+}
+
+function within24h(dateISO, ref = new Date()) {
+    if (!dateISO) return false
+    const dt = new Date(dateISO)
+    return (dt - ref) <= 24 * 60 * 60 * 1000
+}
+
+function suggestBilling(appointment, outcome, reasonCode = "none") {
+    const w24 = within24h(appointment.app_date)
+    let code = null, amount = 0, rationale = ""
+
+    if (outcome === "no_show"){
+        code = "no_show"
+        amount = POLICY.FEE_EUR
+        rationale = "Pas venu au rendez-vous"
+    } else if (outcome === "cancelled") {
+        if (!w24) {
+            code = "cancelled_gte24";
+            amount = 0;
+            rationale = "Annulé plus de 24h à l’avance";
+        } else {
+            if (POLICY.validReasons.includes(reasonCode)) {
+                code = "cancelled_lt24_valid";
+                amount = 0;
+                rationale = "Annulé < 24h avec raison valable";
+            } else {
+                code = "cancelled_lt24_no_valid";
+                amount = POLICY.FEE_EUR;
+                rationale = "Annulé < 24h sans raison valable";
+            }
+        }
+    } else if (outcome === "delay") {
+        code = "delay";
+        amount = 0;
+        rationale = "Retard du rendez-vous";
+    } else if (outcome === "completed") {
+        code = "completed";
+        amount = 0;
+        rationale = "Rendez-vous terminé";
+    } else {
+        code = "scheduled";
+        amount = 0;
+        rationale = "Planifié";
+    }
+    return { code, amount, rationale, within24h: w24 };
+}
 
 function cls(...xs) {
     return xs.filter(Boolean).join(" ")
@@ -43,6 +99,25 @@ function getPatientId(e) {
     if (typeof e?.patient === "number") return e.patient;
     if (typeof e?.patient === "object" && e.patient) return e.patient.id;
     return null;
+}
+
+function isCompleted(a) {
+    const s = (a?.status || a?.state || "").toLowerCase()
+    return a?.is_completed === true || s === "completed" || s === "done" || s === "terminé"
+}
+
+function isCancelled(a) {
+    const s = (a?.status || a?.state || "").toLowerCase()
+    return a?.is_cancelled === true || s === "cancelled" || s === "annulé"
+}
+
+function isScheduled(a) {
+    const s = (a?.status || a?.state || "").toLowerCase()
+    return s === "scheduled" || s === "" || s === "planifié"
+}
+
+function isInvoiced(a) {
+    return a?.invoice_id != null || a?.invoice != null
 }
 
 function ViewSelector({ view, setView }) {
@@ -262,160 +337,29 @@ function CalendarGrid({ date, appointments, practitioners, selectedPractitioners
     )
 }
 
-function NewAppointmentModal({ open, onClose, onConfirm, preset, practitioners, defaultDate }) {
-    const { currentOffice } = useOffice()
-    const [loading, setLoading] = useState(false)
-    const [err, setErr] = useState("")
-
-    const [patientId, setPatientId] = useState("");
-    const [practitioner, setPractitioner] = useState(preset?.practitioner || "");
-    const [date, setDate] = useState(() => (defaultDate ? defaultDate.toISOString().slice(0,10) : ""));
-    const [time, setTime] = useState(preset?.time || "09:00");
-    const [duration, setDuration] = useState(30);
-    const [place, setPlace] = useState("home");
-
-    const [coverage, setCoverage] = useState("prescription");
-    const [prescriptionId, setPrescriptionId] = useState("");
-    const [pathologyCategoryId, setPathologyCategoryId] = useState("");
-
-    useEffect(() => {
-        if (open) {
-            setErr("");
-            setLoading(false);
-            setPractitioner(preset?.practitioner || practitioners[0]?.id || "");
-            setTime(preset?.time || "09:00");
-            setDate(defaultDate ? defaultDate.toISOString().slice(0,10) : "");
-        }
-    }, [open, preset, practitioners, defaultDate]);
-
-    if (!open) return null
-    
-    const canSubmit = patientId && practitioner && date && time && duration > 0 && (coverage === "prescription" ? true : !!pathologyCategoryId)
-
-    const submit = async () => {
-        try {
-            setLoading(true)
-            setErr("")
-            const app_date = new Date(`${date}T${time}:00`)
-            const payload = {
-                patient: patientId,
-                practitioner: practitioner,
-                app_date: app_date.toISOString(),
-                duration_minutes: Number(duration),
-                place,
-            }
-            if (coverage === "prescription" && prescriptionId) payload.prescription = prescriptionId;
-            if (coverage === "annual") payload.pathology_category = pathologyCategoryId;
-
-            const headers = currentOffice ? { "X-Office-Id": String(currentOffice.id) } : undefined;
-            const { data } = await api.post(ENDPOINTS.createAgenda, payload, { headers })
-            onConfirm && onConfirm(data)
-            onClose()
-        } catch (e) {
-            console.error(e)
-            setErr("Impossible de créer le rendez-vous. Vérifiez les champs.")
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    return (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-            <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
-                <div className="px-4 py-3 border-b flex items-center justify-between">
-                    <div className="font-semibold">Nouveau rendez-vous</div>
-                    <button onClick={onClose} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
-                </div>
-
-
-                <div className="p-4 space-y-4">
-                    {err && (
-                        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">
-                            <AlertCircle className="w-4 h-4"/> {err}
-                        </div>
-                    )}
-
-                    <div className="grid sm:grid-cols-2 gap-3">
-                        <label className="text-sm">
-                            <span className="block text-gray-700 mb-1">Patient (ID)</span>
-                            <input value={patientId} onChange={(e) => setPatientId(e.target.value)} placeholder="ex: 123" className="w-full border rounded-lg px-3 py-2 bg-white" />
-                        </label>
-                        <label className="text-sm">
-                            <span className="block text-gray-700 mb-1">Praticien</span>
-                            <select value={practitioner} onChange={(e) => setPractitioner(e.target.value)} className="w-full border rounded-lg px-3 py-2 bg-white">
-                                {practitioners.map((p) => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
-                        </label>
-                    </div>
-                    
-                    <div className="grid sm:grid-cols-3 gap-3">
-                        <label className="text-sm">
-                            <span className="block text-gray-700 mb-1">Date</span>
-                            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full border rounded-lg px-3 py-2 bg-white" />
-                        </label>
-                        <label className="text-sm">
-                            <span className="block text-gray-700 mb-1">Heure</span>
-                            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full border rounded-lg px-3 py-2 bg-white" />
-                        </label>
-                        <label className="text-sm">
-                            <span className="block text-gray-700 mb-1">Durée (min)</span>
-                            <input type="number" min="5" step="5" value={duration} onChange={(e) => setDuration(parseInt(e.target.value) || 30)} className="w-full border rounded-lg px-3 py-2 bg-white" />
-                        </label>
-                    </div>
-
-                    <div className="grid sm:grid-cols-2 gap-3">
-                        <label className="text-sm">
-                            <span className="block text-gray-700 mb-1">Lieu</span>
-                            <select value={place} onChange={(e) => setPlace(e.target.value)} className="w-full border rounded-lg px-3 py-2 bg-white">
-                                <option value="home">Domicile</option>
-                                <option value="office">Cabinet</option>
-                            </select>
-                        </label>
-                        <label className="text-sm">
-                            <span className="block text-gray-700 mb-1">Couverture</span>
-                            <select value={coverage} onChange={(e) => setCoverage(e.target.value)} className="w-full border rounded-lg px-3 py-2 bg-white">
-                                <option value="prescription">Prescription</option>
-                                <option value="annual">Annuel</option>
-                            </select>
-                        </label>
-                    </div>
-
-                    {coverage === "prescription" ? (
-                        <label className="text-sm block">
-                            <span className="block text-gray-700 mb-1">Prescription (ID)</span>
-                            <input value={prescriptionId} onChange={(e) => setPrescriptionId(e.target.value)} placeholder="ex: 77" className="w-full border rounded-lg px-3 py-2 bg-white" />
-                        </label>
-                    ) : (
-                        <label className="text-sm block">
-                            <span className="block text-gray-700 mb-1">Catégorie pathologie (ID)</span>
-                            <input value={pathologyCategoryId} onChange={(e) => setPathologyCategoryId(e.target.value)} placeholder="ex: 1 (PC)" className="w-full border rounded-lg px-3 py-2 bg-white" />
-                        </label>
-                    )}
-
-                    <div className="flex justify-end gap-2 pt-2">
-                        <button onClick={onClose} className="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50" disabled={loading}>Annuler</button>
-                        <button
-                        onClick={submit}
-                        disabled={!canSubmit || loading}
-                        className={cls("px-4 py-2 rounded-lg text-white", loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700")}>
-                            {loading ? "Création…" : "Créer"}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    )
-}
-
-function DetailsPanel({ appointment, onClose }) {
+function DetailsPanel({ appointment, onClose, onSetStatus, statusLoadingId, onGenerateInvoice, invoiceLoadingId }) {
     if (!appointment) return (
         <div className="h-full flex items-center justify-center text-sm text-gray-500">Sélectionnez un rendez-vous</div>
     )
     
     const title = appointment.patientLabel || appointment.patient_name || appointment.patient || (appointment.patient_id ? `Patient #${appointment.patient_id}` : "Séance")
     const startHM = appointment.startTime || appointment.time || (appointment.app_date ? new Date(appointment.app_date).toTimeString().slice(0,5) : "—")
+    const [outcome, setOutcome] = useState(() => {
+    const s = (appointment?.status || appointment?.state || "").toLowerCase();
+        if (s === "completed") return "completed";
+        if (s === "cancelled") return "cancelled";
+        return "scheduled";
+    });
+    const [reasonCode, setReasonCode] = useState("none");
+    const suggestion = useMemo(
+        () => suggestBilling(appointment, outcome, reasonCode),
+        [appointment, outcome, reasonCode]
+    );
+
+    const eligibleInvoice = isCompleted(appointment) && !isInvoiced(appointment)
+    const loadingStatus = statusLoadingId === appointment.id
+    const invoiced = isInvoiced(appointment)
+    const loadingInvoice = invoiceLoadingId === appointment.id
 
     return (
         <div className="h-full p-4 space-y-3">
@@ -435,6 +379,149 @@ function DetailsPanel({ appointment, onClose }) {
                 {appointment.is_over_annual && (
                     <div className="text-xs inline-flex items-center gap-2 px-2 py-1 rounded bg-red-50 border border-red-200 text-red-700">Hors quota annuel</div>
                 )}
+                <div className="flex items-center gap-2">
+                    {isScheduled(appointment) && (
+                        <span className="text-xs px-2 py-1 rounded bg-slate-100 border text-slate-700">Planifié</span>
+                    )}
+
+                    {isCancelled(appointment) && (
+                        <span className="text-xs px-2 py-1 rounded bg-rose-50 border border-rose-200 text-rose-700">Annulé</span>
+                    )}
+                </div>
+            </div>
+
+            <div className="pt-2 border-t flex items-start gap-2">
+                <div className="pt-3 mt-3 border-t flex flex-wrap gap-2">
+                    {isScheduled(appointment) && (
+                        <>
+                        <button
+                        onClick={() => onSetStatus && onSetStatus(appointment, "completed")}
+                        disabled={loadingStatus}
+                        className={"px-3 py-2 rounded-lg text-white " + (loadingStatus ? "bg-gray-400" : "bg-emerald-600 hover:bg-emerald-700")}>
+                            {loadingStatus ? "Mise à jour…" : "Marquer terminé"}
+                        </button>
+                        <button
+                        onClick={() => {
+                        if (confirm("Annuler ce rendez-vous ?")) onSetStatus && onSetStatus(appointment, "cancelled");
+                        }}
+                        disabled={loadingStatus}
+                        className="px-3 py-2 rounded-lg border hover:bg-gray-50">
+                            Annuler
+                        </button>
+                        </>
+                    )}
+
+                    {isCompleted(appointment) && (
+                        <>
+                        <button
+                            onClick={() => onSetStatus && onSetStatus(appointment, "scheduled")}
+                            disabled={loadingStatus}
+                            className="px-3 py-2 rounded-lg border hover:bg-gray-50">
+                            Rebasculer en Planifié
+                        </button>
+
+                        {eligibleInvoice && (
+                            <button
+                            onClick={() => onGenerateInvoice && onGenerateInvoice(appointment)}
+                            disabled={loadingInvoice}
+                            className={"px-3 py-2 rounded-lg text-white " + (loadingInvoice ? "bg-gray-400" : "bg-indigo-600 hover:bg-indigo-700")}>
+                                {loadingInvoice ? "Génération…" : "Générer la facture"}
+                            </button>
+                        )}
+
+                        {isInvoiced(appointment) && (
+                            <a
+                            href={`/invoices/${appointment.invoice_id || appointment.invoice?.id || ""}`}
+                            className="px-3 py-2 rounded-lg border hover:bg-gray-50">
+                                Voir la facture
+                            </a>
+                        )}
+                        </>
+                    )}
+
+                    {isCancelled(appointment) && (
+                        <button
+                        onClick={() => onSetStatus && onSetStatus(appointment, "scheduled")}
+                        disabled={loadingStatus}
+                        className="px-3 py-2 rounded-lg border hover:bg-gray-50">
+                            Replanifier
+                        </button>
+                    )}
+                    </div>
+            </div>
+
+            <div className="rounded-lg border bg-white p-3 space-y-3">
+                <div className="text-sm font-medium">Facturation</div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                    <label className="text-sm block">
+                        <span className="block text-gray-700 mb-1">Issue</span>
+                        <select
+                        value={outcome}
+                        onChange={(e) => setOutcome(e.target.value)}
+                        className="w-full border rounded-lg px-3 py-2 bg-white">
+                            <option value="completed">Terminé</option>
+                            <option value="cancelled">Annulé</option>
+                            <option value="no_show">Pas venu</option>
+                            <option value="delay">Retard</option>
+                            <option value="scheduled">Planifié</option>
+                        </select>
+                    </label>
+
+                    {(outcome === "cancelled" && suggestion.within24h) && (
+                        <label className="text-sm block">
+                            <span className="block text-gray-700 mb-1">Raison valable</span>
+                            <select
+                            value={reasonCode}
+                            onChange={(e) => setReasonCode(e.target.value)}
+                            className="w-full border rounded-lg px-3 py-2 bg-white">
+                                <option value="none">Aucune / non valable</option>
+                                <option value="death">Décès</option>
+                                <option value="sick_with_note">Maladie (certificat)</option>
+                                <option value="first_cancellation">1ère annulation</option>
+                            </select>
+                        </label>
+                    )}
+                </div>
+
+                <div className="rounded-lg border bg-white p-2 text-sm">
+                    <div className="flex items-center justify-between">
+                    <div>Montant recommandé</div>
+                    <div className="font-semibold">{suggestion.amount.toFixed(2)} €</div>
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">
+                        {suggestion.rationale}{suggestion.within24h ? " (RDV dans les 24h)" : ""}
+                    </div>
+                </div>
+
+                <div className="flex gap-2">
+                    {suggestion.amount > 0 ? (
+                        <button
+                        onClick={() =>
+                            onGenerateInvoice &&
+                            onGenerateInvoice(appointment, {
+                                policy_code: suggestion.code,
+                                amount: suggestion.amount,
+                                reason_code: reasonCode,
+                            })
+                        }
+                        disabled={loadingInvoice}
+                        className={cls(
+                        "px-3 py-2 rounded-lg text-white",
+                        loadingInvoice ? "bg-gray-400" : "bg-indigo-600 hover:bg-indigo-700"
+                        )}>
+                            {loadingInvoice ? "Génération…" : `Générer la facture ${suggestion.amount.toFixed(2)} €`}
+                        </button>
+                    ) : (
+                        <div className="text-xs text-gray-600">Aucune amende recommandée pour ce cas.</div>
+                    )}
+
+                    {appointment.invoice_id && (
+                        <a href={`/invoices/${appointment.invoice_id}`} className="px-3 py-2 rounded-lg border hover:bg-gray-50">
+                            Voir la facture
+                        </a>
+                    )}
+                </div>
             </div>
         </div>
     )
@@ -457,7 +544,58 @@ export default function Agenda() {
     const [selectedAppointment, setSelectedAppointment] = useState(null)
     const [modalOpen, setModalOpen] = useState(false)
     const [preset, setPreset] = useState(null)
-    const [patientNames, setPatientNames] = useState({});
+    const [patientNames, setPatientNames] = useState({})
+
+    const [statusLoadingId, setStatusLoadingId] = useState(null)
+    const [invoiceLoadingId, setInvoiceLoadingId] = useState(null)
+
+    async function setAppointmentStatus(appt, nextStatus) {
+        const headers = currentOffice ? { "X-Office-Id": String(currentOffice.id) } : undefined;
+        setStatusLoadingId(appt.id);
+        try {
+            const { data } = await api.patch(ENDPOINTS.updateAgenda(appt.id), { status: String(nextStatus).toLowerCase() }, { headers });
+            setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, ...data } : a));
+            setSelectedAppointment(prev => (prev && prev.id === appt.id) ? { ...prev, ...data } : prev);
+        } catch (e) {
+            const detail = e?.response?.data ? JSON.stringify(e.response.data, null, 2) : (e?.message || "Unknown error");
+            alert("Impossible de changer le statut du rendez-vous.\n" + detail);
+        } finally {
+            setStatusLoadingId(null);
+        }
+    }
+
+    async function generateInvoiceFor(appt, billingMeta = {}) {
+        try {
+            setInvoiceLoadingId(appt.id);
+            const headers = currentOffice ? { "X-Office-Id": String(currentOffice.id) } : undefined;
+            const patientId = appt.patient_id ?? (typeof appt.patient === "object" ? appt.patient.id : appt.patient);
+
+            if (!patientId){
+                alert("Impossible de trouver l'ID patient pour ce rendez-vous.")
+                return
+            }
+
+            const due = new Date();
+            due.setDate(due.getDate() + 30);
+            const dueDateISO = due.toISOString().slice(0, 10);
+
+            const payload = { patient_id: patientId, appointment_ids: [appt.id], due_date: dueDateISO, cancel_reason: billingMeta.cancel_reason || null, };
+
+            const { data } = await api.post(ENDPOINTS.invoicesCreate, payload, { headers });
+            const invId = data?.invoice_id;
+            if (!invId) {
+                console.warn("Réponse de création de facture inattendue: ", data)
+            }
+
+            setSelectedAppointment(prev => prev && prev.id === appt.id ? { ...prev, invoice_id: invId } : prev);
+            setAppointments(prev => prev.map(a => (a.id === appt.id ? { ...a, invoice_id: invId } : a)));
+        } catch (e) {
+            console.error(e);
+            alert("Échec de la génération de la facture.");
+        } finally {
+            setInvoiceLoadingId(null);
+        }
+    }
 
     async function hydratePatientNames(appts) {
         const headers = currentOffice ? { "X-Office-Id": String(currentOffice.id) } : undefined;
@@ -663,6 +801,7 @@ export default function Agenda() {
                         <CalendarGrid
                         date={currentDate}
                         appointments={filteredAppointments}
+                        patientNames={patientNames}
                         practitioners={practitioners}
                         selectedPractitioners={selectedPractitioners}
                         startHour={startHour}
@@ -689,14 +828,19 @@ export default function Agenda() {
                                 practitionerLabel,
                                 patientLabel,
                             })
-                            patientNames={patientNames}
                         }}/>
                     ) : (
                         <div className="rounded-xl border bg-white p-6 text-sm text-gray-600">Les vues "Semaine" et "Mois" seront ajoutées plus tard. Utilisez la vue Jour pour l'instant.</div>
                     )}
                 </div>
                 <div className="lg:col-span-4 xl:col-span-3 min-h-[70vh] rounded-xl border bg-white">
-                    <DetailsPanel appointment={selectedAppointment} onClose={() => setSelectedAppointment(null)} />
+                    <DetailsPanel 
+                    appointment={selectedAppointment} 
+                    onClose={() => setSelectedAppointment(null)} 
+                    onSetStatus={setAppointmentStatus}
+                    statusLoadingId={statusLoadingId}
+                    onGenerateInvoice={generateInvoiceFor} 
+                    invoiceLoadingId={invoiceLoadingId} />
                 </div>
             </div>
 

@@ -29,40 +29,43 @@ class AgendaSerializer(serializers.ModelSerializer):
         practitioner = attrs.get('practitioner') or (instance.practitioner if instance else None)
         office = attrs.get('office') or (instance.office if instance else None)
         patient = attrs.get('patient') or (instance.patient if instance else None)
-        pres = attrs.get('prescription') or (instance.prescription if instance else None)
+        pres = attrs.get('prescription') if 'prescription' in attrs else (instance.prescription if instance else None)
 
         if not all([app_date, practitioner, office, patient]):
             return attrs
 
-        place = attrs.get('place') or (instance.place if instance else 'home')
-        attrs['place'] = place or 'home'
+        place = attrs.get('place') or (getattr(instance, 'place', None) if instance else None) or 'home'
+        attrs['place'] = place
 
-        if pres and hasattr(pres, 'sessions_max') and pres.sessions_max is not None:
-            planned = _count_prescription_planned(pres)
-            if planned >= pres.sessions_max:
-                attrs['prescription'] = None
-
-        will_be_prescription = attrs.get('prescription') is not None
-        if not will_be_prescription:
+        if pres:
+            attrs['coverage_source'] = 'prescription'
+        else:
+            attrs['coverage_source'] = 'annual'
             pathology_category = attrs.get('pathology_category') or (instance.pathology_category if instance else None)
             if pathology_category is None:
                 raise serializers.ValidationError(
                     "En mode 'annual', 'pathology_category' est requis pour tarifer."
                 )
-            attrs['coverage_source'] = 'annual'
-        else:
-            attrs['coverage_source'] = 'prescription'
+
+        changing_time_or_owner = any(k in attrs for k in ['app_date', 'duration_minutes', 'practitioner', 'office'])
+        if not changing_time_or_owner:
+            return attrs
 
         duration = attrs.get('duration_minutes') or (instance.duration_minutes if instance else 30)
         start_dt = app_date
-        end_dt = app_date + timedelta(minutes=duration)
+        end_dt   = app_date + timedelta(minutes=duration)
+
         qs = Agenda.objects.filter(practitioner=practitioner, office=office).exclude(status='cancelled')
         if instance:
             qs = qs.exclude(pk=instance.pk)
 
-        overlap = qs.filter(app_date__lt=end_dt, app_date__gte=start_dt - timedelta(hours=12)).exists()
-        if overlap:
-            raise serializers.ValidationError("Chevauchement de rendez-vous pour ce praticien.")
+        qs = qs.filter(app_date__date=start_dt.date())
+
+        for other in qs:
+            o_start = other.app_date
+            o_end   = other.app_date + timedelta(minutes=other.duration_minutes or 30)
+            if (o_start < end_dt) and (o_end > start_dt):
+                raise serializers.ValidationError("Chevauchement de rendez-vous pour ce praticien.")
 
         return attrs
 

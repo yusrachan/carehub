@@ -7,6 +7,7 @@ urlpatterns = [
     path('api/', include('accounts.urls')),
     path('api/', include('patients.urls')),
     path('api/', include('billing.urls')),
+    path('api/', include('invoices.urls')),
 
     path('admin/', admin.site.urls),
     path('register/', RegisterView.as_view(), name='register'),
@@ -18,7 +19,6 @@ urlpatterns = [
     path('api/agenda/', include('agenda.urls')),
     path('api/practitioners/', PractitionersList.as_view()),
     path('api/subscriptions/', include('subscriptions.urls')),
-    path('api/invoices/', include('invoices.urls')),
     path('api/prescriptions/', include('prescriptions.urls')),
     path('api/settings/', include('user_settings.urls')),
 ]

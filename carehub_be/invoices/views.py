@@ -1,17 +1,20 @@
 import datetime
 from io import BytesIO
 from django.http import HttpResponse
-from django.shortcuts import render
-from rest_framework import viewsets, status
+from django.shortcuts import get_object_or_404
+
+from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.decorators import api_view, permission_classes, action
+
 from .models import Invoice
-from patients.models import Patient
-from agenda.models import Agenda
+from .policy import compute_amount_and_description
 from .serializers import InvoiceSerializer
-from rest_framework.decorators import api_view, permission_classes
-from django.shortcuts import get_object_or_404
+from agenda.models import Agenda
+from patients.models import Patient
+
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
@@ -21,36 +24,34 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
 
-class CreateInvoiceView(APIView):
-    permission_classes = [IsAuthenticated]
+    lookup_value_regex = r'\d+'
 
-    def post(self, request):
+    @action(detail=False, methods=['post'], url_path='create-from-appointments')
+    def create_from_appointments(self, request):
         patient_id = request.data.get('patient_id')
         appointment_ids = request.data.get('appointment_ids', [])
         due_date = request.data.get('due_date')
         practitioner = request.user
 
         if not patient_id or not appointment_ids or not due_date:
-            return Response({"error": "patient_id, appointment_ids, et due_date sont requis."}, status=400)
-        
+            return Response({"error": "patient_id, appointment_ids et due_date sont requis."}, status=400)
+
         try:
             patient = Patient.objects.get(id=patient_id)
         except Patient.DoesNotExist:
             return Response({"error": "Patient introuvable."}, status=404)
-        
+
         appointments = Agenda.objects.filter(id__in=appointment_ids, patient=patient)
-
         if not appointments.exists():
-            return Response({"error": "No valid appointments found for this patient."}, status=404)
-
-        invoice = Invoice.objects.create(
-            patient=patient,
-            practitioner=practitioner,
-            due_date=due_date
-        )
-        invoice.agenda.set(appointments)
-        invoice.calculate_total_amount()
+            return Response({"error": "Aucun rendez-vous valide pour ce patient."}, status=404)
+        
+        invoice = Invoice(patient=patient, practitioner=practitioner, due_date=due_date, amount=0)
         invoice.save()
+
+        invoice.agenda.set(appointments)
+
+        invoice.calculate_total_amount()
+        invoice.save(update_fields=['amount'])
 
         return Response({
             "invoice_id": invoice.id,
