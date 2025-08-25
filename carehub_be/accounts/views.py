@@ -392,21 +392,17 @@ def register_join(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def office_members(request, office_id):
-    # 1) L’utilisateur doit appartenir au cabinet
     if not UserOfficeRole.objects.filter(user=request.user, office_id=office_id).exists():
         return Response({"detail": "Forbidden"}, status=403)
 
-    # 2) Charge les rôles + user sans N+1
     qs = UserOfficeRole.objects.select_related("user").filter(office_id=office_id)
 
-    # 3) Si le champ is_active existe, ne renvoie que les liens actifs
     try:
         UserOfficeRole._meta.get_field("is_active")
         qs = qs.filter(is_active=True)
     except FieldDoesNotExist:
         pass
 
-    # 4) Sérialise proprement
     members = []
     for uor in qs:
         u = uor.user
@@ -427,13 +423,11 @@ class PractitionersList(APIView):
         office_id = request.headers.get("X-Office-Id") or request.query_params.get("office")
         qs = User.objects.all()
 
-        # Filtrer par rôle praticien via la relation userofficerole
         qs = qs.filter(userofficerole__role="practitioner").distinct()
 
         if office_id:
             qs = qs.filter(userofficerole__office_id=office_id)
 
-        # (optionnel) recherche texte ?q=...
         q = request.query_params.get("q")
         if q:
             qs = qs.filter(
