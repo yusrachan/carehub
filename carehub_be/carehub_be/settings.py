@@ -51,14 +51,15 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
-    'patients',
     'accounts',
-    'offices',
     'agenda',
-    'invoices',
-    'subscriptions',
+    'auditing',
     'billing',
+    'patients',
+    'invoices',
+    'offices',
     'prescriptions',
+    'subscriptions',
     'user_settings',
 ]
 
@@ -105,6 +106,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     "subscriptions.middleware.SubscriptionGateMiddleware",
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'auditing.middleware.RequestContextMiddleware',
 ]
 
 CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]

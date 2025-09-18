@@ -16,6 +16,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
 
 import stripe
+from auditing.utils import log_audit
 from subscriptions.services import ensure_subscription_matches_roles
 from subscriptions.models import Subscription
 from offices.models import Office
@@ -407,6 +408,7 @@ def office_members(request, office_id):
     for uor in qs:
         u = uor.user
         members.append({
+            "id": u.id,
             "email": u.email,
             "name": u.name or "",
             "surname": u.surname or "",
@@ -438,3 +440,168 @@ class PractitionersList(APIView):
 
         data = PractitionerLiteSerializer(qs.order_by("surname","name"), many=True).data
         return Response(data)
+
+def _user_is_manager_of_office(user, office_id: int) -> bool:
+    return UserOfficeRole.objects.filter(user=user, office_id=office_id, role="manager", is_active=True).exists()
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def deactivate_user_global(request):
+    """
+    Désactive le compte d'un utilisateur
+    Conditions: superuser ou manager d'au moins un office partageant un rôle actif avec la cible.
+    """
+
+    actor = request.user
+    user_id = request.data.get("user_id")
+    reason = (request.data.get("reason") or "").strip()
+    target = User.objects.filter(pk=user_id).first()
+
+    if not target.is_active:
+        return Response({"detail": "Utilisateur introuvable"}, status=404)
+    target.is_active = False
+    
+    if not actor.is_superuser:
+        shared_offices = UserOfficeRole.objects.filter(
+            user=target, is_active=True, office_id=UserOfficeRole.objects.filter(
+                user=actor, role="manager", is_active=True
+            ).values_list("office_id", flat=True)
+        ).exists()
+        
+        if not shared_offices:
+            return Response({"detail": "Interdit"}, status=403)
+    
+    if target.is_active:
+        return Response({"detail": "Déjà désactivé"}, status=409)
+        
+    before = {"is_active": target.is_active}
+    target.is_active = False
+    target.save(update_fields=["is_active"])
+    after = {"is_active": target.is_active}
+
+    log_audit("USER_DEACTIVATED", target_user=target, reason=reason, before=before, after=after)
+
+    return Response({"message": "Utilisateur désactivé."}, status=200)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def reactivate_user_global(request):
+    """
+    Réactive un compte.
+    """
+
+    actor = request.user
+    user_id = request.data.get("user_id")
+    reason = (request.data.get("reason") or "").strip()
+    target = User.objects.filter(pk=user_id).first()
+    shared_offices = True
+
+    if not target:
+        return Response({"detail": "Utilisateur introuvable"}, status=404)
+    
+    if not actor.is_superuser:
+        shared_offices = UserOfficeRole.objects.filter(
+            user=target,
+            is_active=True,
+            office_id=UserOfficeRole.objects.filter(
+                user=actor, role="manager", is_active=True
+            ).values_list("office_id", flat=True)
+        ).exists()
+        
+    if not shared_offices:
+        return Response({"detail": "Interdit"}, status=403)
+    
+    if target.is_active:
+            return Response({"detail": "Déjà actif"}, status=409)
+        
+    before = {"is_active": target.is_active}
+    target.is_active = True
+    target.save(update_fields=["is_active"])
+    after = {"is_active": target.is_active}
+
+    log_audit("USER_REACTIVATED", target_user=target, reason=reason, before=before, after=after)
+
+    return Response({"message": "Utilisateur réactivé."}, status=200)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def revoke_role(request):
+    """
+    Désactive un rôle d'un utilisateur dans un cabinet.
+    """
+
+    actor = request.user
+    user_id = request.data.get("user_id")
+    office_id = request.data.get("office_id")
+    role = (request.data.get("role") or "").strip()
+    reason = (request.data.get("reason") or "").strip()
+
+    if not _user_is_manager_of_office(actor, office_id):
+        return Response({"detail": "Interdit"}, status=403)
+    
+    uor = UserOfficeRole.objects.filter(user_id=user_id, office_id=office_id, role=role).first()
+    if not uor:
+        return Response({"detail": "Rôle introuvable"}, status=404)
+    if not uor.is_active:
+        return Response({"detail": "Rôle déjà inactif"}, status=409)
+    
+    before = {"is_active": uor.is_active}
+    uor.is_active = False
+    uor.save(update_fields=["is_active"])
+    after = {"is_active": uor.is_active}
+
+    log_audit( "ROLE_REVOKED", target_user=uor.user, target_office_id=office_id, office_context_id=office_id, reason=reason, before=before, after=after,)
+
+    return Response({"message": "Rôle désactivé pour ce cabinet."}, status=200)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def grant_role(request):
+    """
+    (ré)active un rôle d'un utilisateur dans un cabinet
+    """
+
+    actor = request.user
+    user_id = request.data.get("user_id")
+    office_id = request.data.get("office_id")
+    role = (request.data.get("role") or "").strip()
+    reason = (request.data.get("reason") or "").strip()
+
+    if not _user_is_manager_of_office(actor, office_id):
+        return Response({"detail": "Interdit"}, status=403)
+
+    uor = UserOfficeRole.objects.filter(user_id=user_id, office_id=office_id).first()
+
+    if uor:
+        if uor.is_active and uor.role == role:
+            return Response({"detail": "Rôle déjà actif"}, status=409)
+        
+    
+        before = {"is_active": uor.is_active, "role": uor.role}
+        uor.role = role
+        uor.is_active = True
+        uor.save(update_fields=["is_active"])
+        after = {"is_active": uor.is_active, "role": uor.role}
+    
+    else:
+        uor = UserOfficeRole.objects.create(
+            user_id=user_id,
+            office_id=office_id,
+            role=role,
+            is_active=True,
+        )
+        before = None
+        after = {"is_active": uor.is_active, "role": uor.role}
+    
+    try:
+        log_audit("ROLE_GRANTED", target_user=uor.user, target_office_id=office_id, office_context_id=office_id, reason=reason, before=before, after=after,)
+    except Exception:
+        pass
+
+
+
+    return Response({"message": "Rôle (ré)activé pour ce cabinet."}, status=200)

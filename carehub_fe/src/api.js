@@ -92,3 +92,37 @@ api.interceptors.response.use(
     }
   }
 );
+
+export async function deactivateUserGlobal(userId, reason = "") {
+    return api.post("/users/deactivate/", { user_id: userId, reason })
+}
+
+export async function reactivateUserGlobal(userId, reason = "") {
+    return api.post("/users/reactivate/", { user_id: userId, reason })
+}
+
+export async function revokeRole({ userId, officeId, role, reason = "" }) {
+    return api.post("/roles/revoke/", {
+        user_id: userId,
+        office_id: officeId,
+        role,
+        reason,
+    })
+}
+
+export async function grantRole({ userId, officeId, role, reason = "" }) {
+    return api.post("/roles/grant/", {
+        user_id: userId,
+        office_id: officeId,
+        role,
+        reason,
+    })
+}
+
+export async function archiveOffice(officeId, reason = "") {
+    return api.post(`/offices/${officeId}/archive/`, { reason })
+}
+
+export async function unarchiveOffice(officeId, reason = "") {
+    return api.post(`/offices/${officeId}/unarchive/`, { reason })
+}

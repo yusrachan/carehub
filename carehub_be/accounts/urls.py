@@ -1,6 +1,6 @@
 from django.urls import include, path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import ProfileView, LogoutView, MeView, check_secretary_email, invitation_detail, invite_user, office_members, register_join, register_user, check_inami, RegisterFullAccount
+from .views import ProfileView, LogoutView, MeView, check_secretary_email, deactivate_user_global, grant_role, invitation_detail, invite_user, office_members, reactivate_user_global, register_join, register_user, check_inami, RegisterFullAccount, revoke_role
 
 urlpatterns = [
     path('register/', register_user, name='register_user'),
@@ -18,4 +18,9 @@ urlpatterns = [
     path('invitation-detail/', invitation_detail, name='invitation_detail'),
     path('register-join/', register_join, name='register_join'),
     path('api/subscriptions/', include('subscriptions.urls')),
+
+    path('users/deactivate/', deactivate_user_global, name="user-deactivate"),
+    path('users/reactivate/', reactivate_user_global, name="user-reactivate"),
+    path('roles/revoke/', revoke_role, name="role-revoke"),
+    path('roles/grant/', grant_role, name="role-grant"),
 ]

@@ -4,34 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import axios from "axios";
-
-const schema = yup.object().shape({
-    name: yup.string().required("Prénom requis"),
-    surname: yup.string().required("Nom requis"),
-    niss: yup.string().matches(/^\d{11}$/, "Le NISS doit contenir 11 chiffres").required("NISS requis"),
-    inami: yup.string().matches(/^\d{11}$/, "L’INAMI doit contenir 11 chiffres").required("INAMI requis"),
-    email: yup.string().email("E-mail invalide").required("E-mail requis"),
-    password: yup.string().min(7, "Minimum 7 caractères").required("Mot de passe requis"),
-
-    office_name: yup.string().required("Nom du cabinet requis"),
-    bce_number: yup
-    .string()
-    .matches(/^\d{10}$/, "Le numéro BCE doit comporter 10 chiffres")
-    .required("BCE requis"),
-    street: yup.string().required("Adresse requise"),
-    number_street: yup
-    .string()
-    .matches(/^\d+$/, "Le numéro de rue doit être numérique")
-    .required("N° de rue requis"),
-    box: yup.string().nullable(),
-    zipcode: yup
-    .string()
-    .matches(/^\d{4,5}$/, "Le code postale doit comporter 4 ou 5 chiffres")
-    .required("N° de rue requis"),
-    city: yup.string().required("Ville requise"),
-});
+import { useTranslation } from "react-i18next";
 
 function PasswordField({ register, error }) {
+  const { t } = useTranslation();
   const [show, setShow] = useState(false)
   const [score, setScore] = useState(0)
 
@@ -47,7 +23,7 @@ function PasswordField({ register, error }) {
 
   return (
     <div className="mb-4">
-      <label className="block text-gray-700 mb-1">Mot de passe</label>
+      <label className="block text-gray-700 mb-1">{t("password")}</label>
       <div className="relative">
         <input
           {...register("password", { onChange: (e) => evalStrength(e.target.value) })}
@@ -59,7 +35,7 @@ function PasswordField({ register, error }) {
           type="button"
           onClick={() => setShow((v) => !v)}
           className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-600">
-          {show ? "Masquer" : "Afficher"}
+          {show ? t("hide") : t("show")}
         </button>
       </div>
       <div className="mt-1 h-1 rounded bg-gray-200 overflow-hidden">
@@ -68,13 +44,14 @@ function PasswordField({ register, error }) {
             ["w-1/5", "w-2/5", "w-3/5", "w-4/5", "w-full"][Math.max(0, score - 1)]
           } bg-green-600`}/>
       </div>
-      <p className="text-xs text-gray-600 mt-1">8+ caractères, avec majuscules, chiffres et symbole.</p>
+      <p className="text-xs text-gray-600 mt-1">{t("password_requirements")}</p>
       {error && <p className="text-red-500 text-sm mt-1">{error.message}</p>}
     </div>
   )
 }
 
 function NumericField({ name, label, digits = 11, register, error }) {
+  const { t } = useTranslation();
   return(
     <div className="mb-4">
       <label className="block text-gray-700 mb-1">{label}</label>
@@ -84,16 +61,43 @@ function NumericField({ name, label, digits = 11, register, error }) {
         onChange={(e) => {
           e.target.value = e.target.value.replace(/\D/g, "").slice(0, digits);
         }}
-        placeholder={`${digits} chiffres`}
+        placeholder={`${digits}` + t("digits")}
         className="w-full p-2 bg-white text-gray-800 border rounded-lg focus:ring-2 focus:ring-[#466896]"
         aria-invalid={!!error}/>
-      <p className="text-xs text-gray-500 mt-1">Saisir {digits} chiffres sans espaces</p>
+      <p className="text-xs text-gray-500 mt-1">{t("enter")} {digits} {t("digits_without_spaces")}</p>
       {error && <p className="text-red-500 text-sm mt-1">{error.message}</p>}
     </div>
   )
 }
 
 export default function Register() {
+  const { t } = useTranslation();
+  const schema = yup.object().shape({
+      name: yup.string().required(t("first_name_required")),
+      surname: yup.string().required(t("surname_required")),
+      niss: yup.string().matches(/^\d{11}$/, t("niss_invalid")).required(t("niss_required")),
+      inami: yup.string().matches(/^\d{11}$/, t("inami_invalid")).required(t("inami_required")),
+      email: yup.string().email(t("email_invalid")).required(t("email_required")),
+      password: yup.string().min(8, t("password_min")).required(t("password_required")),
+
+      office_name: yup.string().required(t("office_name_required")),
+      bce_number: yup
+      .string()
+      .matches(/^\d{10}$/, t("bce_number_invalid"))
+      .required(t("bce_number_required")),
+      street: yup.string().required(t("street_required")),
+      number_street: yup
+      .string()
+      .matches(/^\d+$/, t("number_street_invalid"))
+      .required(t("number_street_required")),
+      box: yup.string().nullable(),
+      zipcode: yup
+      .string()
+      .matches(/^\d{4,5}$/, t("zipcode_invalid"))
+      .required(t("zipcode_required")),
+      city: yup.string().required(t("city_required")),
+  });
+
   const navigate = useNavigate()
   const { register, handleSubmit, setError, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
@@ -126,9 +130,9 @@ export default function Register() {
           hasField = true
           setError(field, { type: "server", message: String(message) });
         };
-        if (!hasField) setGlobalError("Une erreur est survenue. Réessayez.")
+        if (!hasField) setGlobalError(t("generic_error"));
       } else {
-        setGlobalError(typeof server === "string" ? server : "Erreur serveur (500).");
+        setGlobalError(typeof server === "string" ? server : t("server_error"));
       }
     } finally {
       setLoading(false)
@@ -141,7 +145,7 @@ export default function Register() {
         onSubmit={handleSubmit(onSubmit)}
         className="bg-white p-8 rounded-xl shadow-md w-full max-w-2xl"
         noValidate>
-        <h2 className="text-2xl text-center font-bold text-[#466896] mb-6">Créer un compte</h2>
+        <h2 className="text-2xl text-center font-bold text-[#466896] mb-6">{t("create_account")}</h2>
 
         {globalError && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-700 p-3 text-sm">
@@ -149,13 +153,12 @@ export default function Register() {
           </div>
         )}
 
-        {/* --- Section: Utilisateur --- */}
         <fieldset className="mb-6">
-          <legend className="text-lg font-semibold mb-4">Informations utilisateur</legend>
+          <legend className="text-lg font-semibold mb-4">{t("user_information")}</legend>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-gray-700 mb-1">Prénom</label>
+              <label className="block text-gray-700 mb-1">{t("first_name")}</label>
               <input
                 {...register("name")}
                 type="text"
@@ -166,7 +169,7 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-gray-700 mb-1">Nom</label>
+              <label className="block text-gray-700 mb-1">{t("last_name")}</label>
               <input
                 {...register("surname")}
                 type="text"
@@ -184,7 +187,7 @@ export default function Register() {
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-gray-700 mb-1">E-mail</label>
+              <label className="block text-gray-700 mb-1">{t("email")}</label>
               <input
                 {...register("email")}
                 type="email"
@@ -200,10 +203,10 @@ export default function Register() {
 
         {/* --- Section: Cabinet --- */}
         <fieldset className="mb-6">
-          <legend className="text-lg font-semibold mb-4">Informations cabinet</legend>
+          <legend className="text-lg font-semibold mb-4">{t("office_information")}</legend>
 
           <div className="mb-4">
-            <label className="block text-gray-700 mb-1">Nom du cabinet</label>
+            <label className="block text-gray-700 mb-1">{t("office_name")}</label>
             <input
               {...register("office_name")}
               type="text"
@@ -213,9 +216,9 @@ export default function Register() {
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
-            <NumericField name="bce_number" label="Numéro BCE" digits={10} register={register} error={errors.bce_number} />
+            <NumericField name="bce_number" label={t("bce_number")} digits={10} register={register} error={errors.bce_number} />
             <div>
-              <label className="block text-gray-700 mb-1">Boîte (opt.)</label>
+              <label className="block text-gray-700 mb-1">{t("box_optional")}</label>
               <input
                 {...register("box")}
                 type="text"
@@ -225,7 +228,7 @@ export default function Register() {
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-gray-700 mb-1">Adresse</label>
+              <label className="block text-gray-700 mb-1">{t("address")}</label>
               <input
                 {...register("street")}
                 type="text"
@@ -235,7 +238,7 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-gray-700 mb-1">N° de rue</label>
+              <label className="block text-gray-700 mb-1">{t("street_number")}</label>
               <input
                 {...register("number_street")}
                 inputMode="numeric"
@@ -248,7 +251,7 @@ export default function Register() {
 
           <div className="grid sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-gray-700 mb-1">Code postal</label>
+              <label className="block text-gray-700 mb-1">{t("zipcode")}</label>
               <input
                 {...register("zipcode")}
                 inputMode="numeric"
@@ -259,7 +262,7 @@ export default function Register() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-gray-700 mb-1">Ville</label>
+              <label className="block text-gray-700 mb-1">{t("city")}</label>
               <input
                 {...register("city")}
                 type="text"
@@ -277,13 +280,13 @@ export default function Register() {
           className={`w-full py-2 rounded-lg text-white transition ${
             loading ? "bg-gray-400 cursor-not-allowed" : "bg-[#466896] hover:opacity-95"
           }`}>
-          {loading ? "Création du compte…" : "Créer mon compte et payer"}
+          {loading ? <span>{t("creating_account")}</span> : <span>{t("create_account_and_pay")}</span>}
         </button>
 
         <p className="text-center text-sm text-gray-600 mt-4">
-          Déjà un compte ?{" "}
+          {t("already_have_account")}{" "}
           <a href="/login" className="text-[#466896] underline">
-            Se connecter
+            {t("login")}
           </a>
         </p>
       </form>

@@ -4,6 +4,7 @@ import App from './App.jsx';
 import './index.css';
 import { OfficeProvider } from './context/OfficeContext.jsx';
 import { BrowserRouter } from 'react-router-dom';
+import "./i18n.js";
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>

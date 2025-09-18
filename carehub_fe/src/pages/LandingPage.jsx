@@ -7,102 +7,112 @@ import {
   FileText,
   ReceiptText,
   ShieldCheck,
-  Sparkles,
   CheckCircle2,
-  TimerReset,
   Euro,
 } from "lucide-react";
-
-const PRICING = [
-  { name: "Manager", priceMonthly: 90, popular: true, cta: "Choisir Manager" },
-  { name: "Kinésithérapeute", priceMonthly: 60, popular: false, cta: "Choisir Kiné" },
-  { name: "Secrétaire", priceMonthly: 30, popular: false, cta: "Choisir Secrétaire" },
-];
+import { useTranslation } from "react-i18next";
 
 export default function LandingPage() {
+    const { t, i18n } = useTranslation();
+    
+    const PRICING = [
+        { name: t("role.manager"), priceMonthly: 90, popular: true, cta: t("pricing.manager") },
+        { name: t("role.kine"), priceMonthly: 60, popular: false, cta: t("pricing.kine") },
+        { name: t("role.secretary"), priceMonthly: 30, popular: false, cta: t("pricing.secretary") },
+    ];
 
     return (
         <div className="flex flex-col w-screen min-h-screen bg-[#D9E1E8] text-[#333333]">
-        <header className="flex justify-between items-center p-6 shadow-md bg-white">
-            <div className="flex items-center space-x-3">
-                <img src="/images/logo.png" alt="CareHub Logo" className="w-12 h-12" />
-                <h1 className="text-2xl font-bold">CareHub</h1>
-            </div>
-            <div className="flex space-x-4">
-                <Link to="/login" className="px-6 py-2 text-gray-800 bg-white rounded-xl shadow">
-                    Se connecter
-                </Link>
-                <Link to="/register" className="px-6 py-2 bg-[#466896] text-white rounded-xl shadow">
-                    S'inscrire
-                </Link>
-            </div>
-        </header>
-
-        <main className="container mx-auto px-4 py-16 text-center">
-            <h2 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
-            Gérez votre cabinet de <br />
-            <span className="bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
-                kinésithérapie
-            </span>{" "}
-            en toute simplicité
-            </h2>
-
-            <p className="text-xl text-gray-700 mb-8 max-w-3xl mx-auto">
-                Planifiez vos séances, terminez le rendez-vous et générez la facture en un clic, avec des
-                montants calculés sur base de la nomenclature INAMI.
-            </p>
-
-            <div className="flex items-center justify-center gap-3 mb-10">
-                <Link
-                    to="/register"
-                    className="bg-gradient-to-r from-blue-600 to-green-600 text-white hover:from-blue-700 hover:to-green-700 px-8 py-4 text-lg rounded-xl">
-                    Commencer maintenant
-                </Link>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
-                <div className="rounded-xl bg-white p-4 text-left border">
-                    <div className="flex items-center gap-2 font-semibold">
-                        <Calendar className="w-5 h-5 text-blue-600" />
-                        Agenda clair
-                    </div>
-                    <p className="text-sm text-gray-600 mt-2">
-                        Vue jour par praticien, statuts (planifié, terminé, annulé).
-                    </p>
+            <header className="flex justify-between items-center p-6 shadow-md bg-white">
+                <div className="flex items-center space-x-3">
+                    <img src="/images/logo.png" alt="CareHub Logo" className="w-12 h-12" />
+                    <h1 className="text-2xl font-bold">CareHub</h1>
                 </div>
-                <div className="rounded-xl bg-white p-4 text-left border">
-                    <div className="flex items-center gap-2 font-semibold">
-                        <ReceiptText className="w-5 h-5 text-green-600" />
-                        Facturation 1-clic
-                    </div>
-                    <p className="text-sm text-gray-600 mt-2">
-                        Depuis un RDV terminé, générez la facture (FAC-YYYY-####) et téléchargez le PDF.
-                    </p>
+                <div className="flex space-x-4">
+                    <Link to="/login" className="px-6 py-2 text-gray-800 bg-white rounded-xl shadow">
+                        {t("login")}
+                    </Link>
+                    <Link to="/register" className="px-6 py-2 bg-[#466896] text-white rounded-xl shadow">
+                        {t("signup")}
+                    </Link>
+                    <select
+                    onChange={(e) => {
+                        const lang = e.target.value;
+                        i18n.changeLanguage(lang);
+                        localStorage.setItem("lang", lang);
+                    }}
+                    value={i18n.language}
+                    className="px-2 py-1 border rounded bg-white">
+                        <option value="fr">FR</option>
+                        <option value="nl">NL</option>
+                    </select>
                 </div>
-                <div className="rounded-xl bg-white p-4 text-left border">
-                    <div className="flex items-center gap-2 font-semibold">
-                        <Euro className="w-5 h-5 text-purple-600" />
-                        INAMI intégré
-                    </div>
-                    <p className="text-sm text-gray-600 mt-2">
-                        Grille tarifaire importée : honoraires, remboursement, tiers-payant.
-                    </p>
+            </header>
+
+            <main className="container mx-auto px-4 py-16 text-center">
+                <h2 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
+                {t("manage")} <br />
+                <span className="bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+                    {t("physio")}
+                </span>{" "}
+                {t("simplicity")}
+                </h2>
+
+                <p className="text-xl text-gray-700 mb-8 max-w-3xl mx-auto">
+                    {t("landing.description")}
+                </p>
+
+                <div className="flex items-center justify-center gap-3 mb-10">
+                    <Link
+                        to="/register"
+                        className="bg-gradient-to-r from-blue-600 to-green-600 text-white hover:from-blue-700 hover:to-green-700 px-8 py-4 text-lg rounded-xl">
+                        {t("start.now")}
+                    </Link>
                 </div>
-                <div className="rounded-xl bg-white p-4 text-left border">
-                    <div className="flex items-center gap-2 font-semibold">
-                        <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                        Données sécurisées
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
+                    <div className="rounded-xl bg-white p-4 text-left border">
+                        <div className="flex items-center gap-2 font-semibold">
+                            <Calendar className="w-5 h-5 text-blue-600" />
+                            {t("agenda")}
+                        </div>
+                        <p className="text-sm text-gray-600 mt-2">
+                            {t("agenda.desc")}
+                        </p>
                     </div>
-                    <p className="text-sm text-gray-600 mt-2">
-                        Accès authentifié, rôles praticiens, fichiers factures centralisés.
-                    </p>
+                    <div className="rounded-xl bg-white p-4 text-left border">
+                        <div className="flex items-center gap-2 font-semibold">
+                            <ReceiptText className="w-5 h-5 text-green-600" />
+                            {t("billing")}
+                        </div>
+                        <p className="text-sm text-gray-600 mt-2">
+                            {t("billing.desc")}
+                        </p>
+                    </div>
+                    <div className="rounded-xl bg-white p-4 text-left border">
+                        <div className="flex items-center gap-2 font-semibold">
+                            <Euro className="w-5 h-5 text-purple-600" />
+                            {t("inami")}
+                        </div>
+                        <p className="text-sm text-gray-600 mt-2">
+                            {t("inami.desc")}
+                        </p>
+                    </div>
+                    <div className="rounded-xl bg-white p-4 text-left border">
+                        <div className="flex items-center gap-2 font-semibold">
+                            <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                            {t("secure")}
+                        </div>
+                        <p className="text-sm text-gray-600 mt-2">
+                            {t("secure.desc")}
+                        </p>
+                    </div>
                 </div>
-            </div>
-        </main>
+            </main>
 
         <section className="container mx-auto px-4 py-16">
             <h3 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-                Tout ce dont vous avez besoin pour votre cabinet
+                {t("features.title")}
             </h3>
 
             <div className="grid md:grid-cols-3 gap-8">
@@ -111,11 +121,11 @@ export default function LandingPage() {
                         <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
                             <Users className="w-6 h-6 text-blue-600" />
                         </div>
-                        <CardTitle className="text-xl text-gray-900">Dossiers patients</CardTitle>
+                        <CardTitle className="text-xl text-gray-900">{t("patients")}</CardTitle>
                     </CardHeader>
                     <CardContent className="text-center">
                         <CardDescription className="text-gray-600">
-                            Fiche patient, coordonnées, mutuelle/tiers-payant et historique de factures.
+                            {t("patients.desc")}
                         </CardDescription>
                     </CardContent>
                 </Card>
@@ -125,11 +135,11 @@ export default function LandingPage() {
                         <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
                             <Calendar className="w-6 h-6 text-green-600" />
                         </div>
-                        <CardTitle className="text-xl text-gray-900">Planning intelligent</CardTitle>
+                        <CardTitle className="text-xl text-gray-900">{t("planning")}</CardTitle>
                     </CardHeader>
                     <CardContent className="text-center">
                         <CardDescription className="text-gray-600">
-                            Créneaux par praticien, détection de chevauchements, statuts & actions rapides.
+                            {t("planning.desc")}
                         </CardDescription>
                     </CardContent>
                 </Card>
@@ -139,15 +149,15 @@ export default function LandingPage() {
                         <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4">
                             <FileText className="w-6 h-6 text-purple-600" />
                         </div>
-                        <CardTitle className="text-xl text-gray-900">Facturation automatisée</CardTitle>
+                        <CardTitle className="text-xl text-gray-900">{t("automation")}</CardTitle>
                     </CardHeader>
                     <CardContent className="text-center space-y-2">
                         <CardDescription className="text-gray-600">
-                            Calculs via nomenclature INAMI + PDF. Amende no-show/annulation &lt; 24 h (configurable).
+                            {t("automation.desc")}
                         </CardDescription>
                         <div className="flex items-center justify-center gap-2 text-sm text-gray-700">
                             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            FAC-YYYY-#### généré automatiquement
+                            {t("automation.generated")}
                         </div>
                     </CardContent>
                 </Card>
@@ -162,29 +172,26 @@ export default function LandingPage() {
                 <div className="grid md:grid-cols-3 gap-6">
                     <div className="border rounded-xl p-4">
                         <div className="font-semibold flex items-center gap-2">
-                            <Calendar className="w-5 h-5 text-blue-600" /> 1. Planifier
+                            <Calendar className="w-5 h-5 text-blue-600" /> {t("step1.title")}
                         </div>
                         <p className="text-sm text-gray-600 mt-2">
-                            Créez le rendez-vous (prescription/annuel), le système vérifie la cohérence et la
-                            tarification disponible.
+                            {t("step1.desc")}
                         </p>
                     </div>
                     <div className="border rounded-xl p-4">
                         <div className="font-semibold flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600" /> 2. Terminer
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600" /> {t("step2.title")}
                         </div>
                         <p className="text-sm text-gray-600 mt-2">
-                            Marquez « Terminé » ou « Annulé ». En cas d’annulation &lt; 24 h, une amende peut être
-                            proposée.
+                            {t("step2.desc")}
                         </p>
                     </div>
                     <div className="border rounded-xl p-4">
                         <div className="font-semibold flex items-center gap-2">
-                            <ReceiptText className="w-5 h-5 text-purple-600" /> 3. Facturer
+                            <ReceiptText className="w-5 h-5 text-purple-600" /> {t("step3.title")}
                         </div>
                         <p className="text-sm text-gray-600 mt-2">
-                            Générez la facture (montants INAMI), téléchargez le PDF et retrouvez-la dans le
-                            profil patient.
+                            {t("step3.desc")}
                         </p>
                     </div>
                 </div>
@@ -193,8 +200,8 @@ export default function LandingPage() {
 
             <section id="pricing" className="container mx-auto px-4 py-16">
                 <div className="text-center mb-6">
-                    <h3 className="text-3xl font-bold text-gray-900 mb-2">Tarifs par rôle</h3>
-                    <p className="text-lg text-gray-600">Payez uniquement pour les rôles utilisés.</p>
+                    <h3 className="text-3xl font-bold text-gray-900 mb-2">{t("pricing.title")}</h3>
+                    <p className="text-lg text-gray-600">{t("pricing.desc")}</p>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -208,7 +215,7 @@ export default function LandingPage() {
 
                             <div className="text-5xl font-bold text-blue-600 mt-3">
                                 {p.priceMonthly}€
-                            <span className="text-base font-medium text-gray-700">/mois</span>
+                            <span className="text-base font-medium text-gray-700">{t("pricing.month")}</span>
                             </div>
                         </div>
                     ))}

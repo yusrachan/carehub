@@ -19,6 +19,8 @@ class Office(models.Model):
 
     plan = models.CharField(max_length=20, choices=PLAN_CHOICES, null=True, blank=True, default='role_based')
 
+    is_archived = models.BooleanField(default=False)
+    achived_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.name

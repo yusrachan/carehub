@@ -5,13 +5,16 @@ import { data, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import axios from "axios";
 import { api } from "../api";
+import { useTranslation } from "react-i18next";
 
-const schema = yup.object().shape({
-    email: yup.string().email("E-mail invalide").required("E-mail requis"),
-    password: yup.string().min(8, "Minimum 8 caractères").required("Mot de passe requis"),
-});
 
 export default function Login() {
+    const { t } = useTranslation();
+    
+    const schema = yup.object().shape({
+        email: yup.string().email(t("email.invalid")).required(t("email.required")),
+        password: yup.string().min(8, t("password.min")).required(t("password.required")),
+    });
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -26,7 +29,7 @@ export default function Login() {
                     }
                 }
             } catch (e) {
-                console.warn("Préchargement /offices/my/ impossible: ", e)
+                console.warn( "Préchargement /offices/my/ impossible: ", e)
             } finally {
                 navigate("/dashboard")
             }
@@ -63,7 +66,7 @@ export default function Login() {
         } catch (err) {
             setError("password", {
                 type: "server",
-                message: err.response?.status === 401 ? "Identifiants invalides" : "Une erreur est survenue. Réessayez."
+                message: err.response?.status === 401 ? t("invalid_credentials") : t("error_occurred")
             })
         }
     };
@@ -73,11 +76,11 @@ export default function Login() {
             <form
                 onSubmit={handleSubmit(onSubmit)}
                 className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-                <h2 className="text-2xl font-bold text-[#466896] mb-6 text-center">Connexion</h2>
+                <h2 className="text-2xl font-bold text-[#466896] mb-6 text-center">{t("login")}</h2>
 
                 <div className="mb-4">
                 <label className="block text-[#333] mb-2" htmlFor="email">
-                    E-mail
+                    {t("email")}
                 </label>
                 <input
                     type="email"
@@ -89,7 +92,7 @@ export default function Login() {
 
                 <div className="mb-6">
                 <label className="block text-[#333] mb-2" htmlFor="password">
-                    Mot de passe
+                    {t("password")}
                 </label>
                 <input
                     type="password"
@@ -103,7 +106,7 @@ export default function Login() {
                 type="submit"
                 disabled={isSubmitting}
                 className="w-full bg-[#466896] text-white py-2 rounded-lg hover:bg-[#3a5870] transition">
-                    {isSubmitting ? "Connexion..." : "Se connecter"}
+                    {isSubmitting ? t("login.loading") : t("login")}
                 </button>
             </form>
         </div>
