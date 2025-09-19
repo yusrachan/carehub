@@ -1,0 +1,2 @@
+created_at,event_type,actor_id,target_user_id,target_office_id,office_context_id,path,method,ip_address,user_agent,request_id,reason,before,after
+2025-08-31 15:16:48.098701+00:00,ROLE_REVOKED,17,20,13,13,/api/roles/revoke/,,127.0.0.1,"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",7f854646427244f29840c6e1b054a363,(changement de rôle) Upgrade,{'is_active': True},{'is_active': False}
