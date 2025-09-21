@@ -5,6 +5,13 @@ import InviteMemberDialog from "../components/InviteMemberDialog";
 import ConfirmActionModal from "../components/ConfirmActionModal";
 import { useOffice } from "../context/OfficeContext";
 
+/**
+ * Composant RolePill
+ * Affiche un badge coloré représentant le rôle d'un membre.
+ *
+ * @param {Object} props
+ * @param {string} props.role - rôle du membre ("manager", "practitioner", "secretary")
+ */
 function RolePill({ role }) {
     const map = {
         manager: { label: "Manager", cls: "bg-indigo-50 text-indigo-700 border-indigo-100" },
@@ -15,6 +22,14 @@ function RolePill({ role }) {
     return <span className={`px-2.5 py-1 rounded-full text-xs border ${cls}`}>{label}</span>;
 }
 
+/**
+ * Composant Avatar
+ * Affiche les initiales d'un membre dans un cercle stylisé.
+ *
+ * @param {Object} props
+ * @param {string} props.name - prénom du membre
+ * @param {string} props.surname - nom du membre
+ */
 function Avatar({ name = "", surname = "" }) {
     const initials = (name?.[0] || "").toUpperCase() + (surname?.[0] || "").toUpperCase()
     return(
@@ -24,22 +39,32 @@ function Avatar({ name = "", surname = "" }) {
     )
 }
 
+/**
+ * Composant TeamPage
+ * Page principale affichant les membres d'un cabinet, leurs rôles, stats et actions
+ *
+ * @param {Object} props
+ * @param {string} props.officeId - ID du cabinet (optionnel si contexte Office disponible)
+ * @param {string} props.userRole - rôle de l'utilisateur (optionnel si contexte Office disponible)
+ */
 export default function TeamPage({ officeId: officeIdProp, userRole: userRoleProp }) {
+    // Récupération du cabinet courant depuis le context
     const { currentOffice } = useOffice()
     const officeId = currentOffice?.id ?? officeIdProp ?? null
     const userRole = currentOffice?.role ?? userRoleProp ?? null
 
-    const [members, setMembers] = useState([])
-    const [loading, setLoading] = useState(true)
-    const [isAddOpen, setIsAddOpen] = useState(false)
-    const [search, setSearch] = useState("")
-    const [view, setView] = useState("grid")
-    const [error, setError] = useState("")
+    const [members, setMembers] = useState([]) // Liste des membres du cabinet
+    const [loading, setLoading] = useState(true) // Indique si les données sont en cours de chargement
+    const [isAddOpen, setIsAddOpen] = useState(false) // Modal d'ajout ouvert ?
+    const [search, setSearch] = useState("") // Texte de recherche
+    const [view, setView] = useState("grid") // Vue actuelle ("grid" ou "list")
+    const [error, setError] = useState("") // Message d'erreur
 
-    const [officeInfo, setOfficeInfo] = useState(null)
-    const [confirmOpen, setConfirmOpen] = useState(false)
-    const [pendingAction, setPendingAction] = useState(null)
+    const [officeInfo, setOfficeInfo] = useState(null) // Informations détaillées sur le cabinet
+    const [confirmOpen, setConfirmOpen] = useState(false) // Modal de confirmation ouvert ?
+    const [pendingAction, setPendingAction] = useState(null) // Action en attente de confirmation { type, payload }
 
+    // ---------- LOAD MEMBERS ----------
     const loadMembers = useCallback(async () => {
         if (!officeId) return
         setLoading(true)
@@ -56,6 +81,7 @@ export default function TeamPage({ officeId: officeIdProp, userRole: userRolePro
         }
     }, [officeId])
 
+    // ---------- LOAD OFFICE INFO ----------
     const loadOfficeInfo = useCallback(async () => {
       if (!officeId) return
       try {
@@ -66,11 +92,13 @@ export default function TeamPage({ officeId: officeIdProp, userRole: userRolePro
       }
     }, [officeId])
 
+    // Chargement initial des membres et infos du cabinet
     useEffect(() => {
         loadMembers()
         loadOfficeInfo()
     }, [loadMembers, loadOfficeInfo, isAddOpen])
 
+    // Filtrage des membres selon la recherche
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase()
         if (!q) return members
@@ -79,6 +107,7 @@ export default function TeamPage({ officeId: officeIdProp, userRole: userRolePro
         )
     }, [members, search])
 
+    // Statistiques sur les rôles des membres
     const stats = useMemo(() => {
     const count = (role) => members.filter((m) => m.role === role).length
     return {
@@ -91,6 +120,10 @@ export default function TeamPage({ officeId: officeIdProp, userRole: userRolePro
   
     const canManage = userRole === "manager"
 
+    // ---------- ACTIONS AVEC CONFIRMATION ----------
+    /**
+     * Prépare la suppression d'un membre du cabinet
+     */
     const askRevokeFromOffice = (member) => {
       if (!canManage) return
       setPendingAction({
@@ -100,6 +133,9 @@ export default function TeamPage({ officeId: officeIdProp, userRole: userRolePro
       setConfirmOpen(true)
     }
 
+    /**
+     * Prépare le changement de rôle d'un membre
+     */
     const askChangeRole = (member, newRole) => {
       if (!canManage || newRole === member.role) return
       setPendingAction({
@@ -109,6 +145,9 @@ export default function TeamPage({ officeId: officeIdProp, userRole: userRolePro
       setConfirmOpen(true)
     }
 
+    /**
+     * Prépare l'archivage ou désarchivage du cabinet
+     */
     const askToggleArchive = () => {
       if (!canManage) return
       setPendingAction({
@@ -118,6 +157,10 @@ export default function TeamPage({ officeId: officeIdProp, userRole: userRolePro
       setConfirmOpen(true)
     }
 
+    /**
+     * Exécute l'action en attente confirmée dans le modal
+     * @param {string} reason - raison facultative fournie par l'utilisateur
+     */
     const runPending = async (reason) => {
       if (!pendingAction) return
       try {

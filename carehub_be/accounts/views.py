@@ -1,3 +1,14 @@
+"""
+Views et API endpoints pour la gestion des utilisateurs et cabinets sur CareHub.
+
+Contient :
+- Inscription d'utilisateurs et cabinets
+- Gestion des rôles dans les cabinets
+- Invitations à rejoindre un cabinet
+- Activation / désactivation de comptes et rôles
+- Vérifications d'unicité (email, INAMI, BCE)
+"""
+
 from datetime import timedelta
 
 from django.conf import settings
@@ -28,13 +39,24 @@ FRONTEND_URL = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
 ALLOWED_ROLES = {"manager", "practitioner", "secretary"}
 
 def _is_manager(user, office_id):
+    """
+    Vérifie si l'utilisateur est manager d'un cabinet donné.
+    """
     return UserOfficeRole.objects.filter(user=user, office_id=office_id, role="manager").exists()
 
 class RegisterView(generics.CreateAPIView):
+    """
+    Endpoint pour créer un nouvel utilisateur.
+    Retourne tokens JWT après création.
+    """
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
 
     def create(self, request, *args, **kwargs):
+        """
+        Crée l'utilisateur et génère les tokens JWT.
+        """
+
         response = super().create(request, *args, **kwargs)
         user = User.objects.get(email=request.data['email'])
         refresh = RefreshToken.for_user(user)
@@ -43,6 +65,10 @@ class RegisterView(generics.CreateAPIView):
         return response
 
 class ProfileView(APIView):
+    """
+    Récupère le profil de l'utilisateur connecté.
+    """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -54,6 +80,10 @@ class ProfileView(APIView):
         })
 
 class LogoutView(APIView):
+    """
+    Déconnecte un utilisateur en blacklistant le refresh token.
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -66,16 +96,31 @@ class LogoutView(APIView):
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
 class MeView(APIView):
+    """
+    Renvoie les données sérialisées de l'utilisateur connecté.
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
     
 class RegisterFullAccount(APIView):
+    """
+    Crée un utilisateur complet avec son cabinet.
+    Vérifie l'unicité de l'email, BCE, INAMI, NISS.
+    Attribue le rôle 'manager' à l'utilisateur pour le cabinet créé.
+    """
+     
     permission_classes = [AllowAny]
 
     @transaction.atomic
     def post(self, request):
+        """
+        Endpoint POST pour l'inscription complète.
+        Retourne tokens JWT et, si nécessaire, un lien de paiement Stripe.
+        """
+
         data = request.data
 
         errors = {}
@@ -135,6 +180,11 @@ class RegisterFullAccount(APIView):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def check_inami(request):
+    """
+    Vérifie si un numéro INAMI existe dans la base.
+    Retourne existence et infos de l'utilisateur si trouvé.
+    """
+
     inami = (request.GET.get('inami') or "").strip()
     if not inami:
         return Response({"error": "Paramètre 'inami' requis"}, status=400)
@@ -169,6 +219,10 @@ def check_secretary_email(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
+    """
+    Crée un utilisateur simple à partir de l'email et mot de passe.
+    """
+
     data = request.data
     if User.objects.filter(email=data['email']).exists():
         return Response({'email': 'E-mail déjà utilisé.'}, status=400)
@@ -180,20 +234,11 @@ def register_user(request):
     )
     return Response({'message': 'Utilisateur créé avec succès.'}, status=201)
 
-def _already_invited(email: str, office_id: int) -> bool:
-    return Invitation.objects.filter(
-        email__iexact=email,
-        office_id=office_id,
-        used=False,
-        expires_at__gt=timezone.now()
-    ).exists()
-
-#Vue pour inviter un collaborateur dans un cabinet par le manager
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def invite_user(request):
     """
-    invite kiné (INAMI) OU secrétaire/manager (email).
+    Invite kiné (INAMI) OU secrétaire/manager (email).
     Corps attendu:
       - commun: office_id, role
       - practitioner: inami obligatoire ; si user introuvable => aussi email, name, surname
@@ -329,6 +374,10 @@ def invite_user(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def invitation_detail(request):
+    """
+    Retourne les informations d'une invitation à partir de son token.
+    """
+
     token = request.GET.get('token')
     try:
         invitation = Invitation.objects.get(token=token, used=False, expires_at__gt=timezone.now())
@@ -350,6 +399,11 @@ def invitation_detail(request):
 @permission_classes([AllowAny])
 @transaction.atomic
 def register_join(request):
+    """
+    Inscription d'un utilisateur à partir d'une invitation.
+    Crée l'utilisateur si nécessaire et assigne le rôle dans le cabinet.
+    """
+
     data = request.data
     token = data.get('token')
     if not token:
@@ -393,6 +447,10 @@ def register_join(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def office_members(request, office_id):
+    """
+    Retourne la liste des membres d'un cabinet (filtrage par rôle actif si existant).
+    """
+
     if not UserOfficeRole.objects.filter(user=request.user, office_id=office_id).exists():
         return Response({"detail": "Forbidden"}, status=403)
 
@@ -418,6 +476,10 @@ def office_members(request, office_id):
     return Response(members)
 
 class PractitionersList(APIView):
+    """
+    Liste les praticiens, filtrable par cabinet et recherche texte.
+    """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
@@ -442,6 +504,9 @@ class PractitionersList(APIView):
         return Response(data)
 
 def _user_is_manager_of_office(user, office_id: int) -> bool:
+    """
+    Vérifie si un utilisateur est manager actif d'un cabinet donné.
+    """
     return UserOfficeRole.objects.filter(user=user, office_id=office_id, role="manager", is_active=True).exists()
 
 @api_view(["POST"])
@@ -601,7 +666,5 @@ def grant_role(request):
         log_audit("ROLE_GRANTED", target_user=uor.user, target_office_id=office_id, office_context_id=office_id, reason=reason, before=before, after=after,)
     except Exception:
         pass
-
-
 
     return Response({"message": "Rôle (ré)activé pour ce cabinet."}, status=200)

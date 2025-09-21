@@ -2,6 +2,18 @@ from .models import AuditEvent
 from .middleware import get_current_request, get_current_user
 
 def client_ip(request):
+    """
+    Récupère l’adresse IP du client à partir de la requête HTTP.
+
+    - Si l’application est derrière un proxy, on lit l’en-tête `X-Forwarded-For` et on retourne la première adresse IP.
+    - Sinon, on retourne la valeur de `REMOTE_ADDR`.
+
+    Args:
+        request (HttpRequest | None): Requête HTTP Django.
+
+    Returns:
+        str | None: Adresse IP du client si trouvée, sinon None.
+    """
     if not request:
         return None
     

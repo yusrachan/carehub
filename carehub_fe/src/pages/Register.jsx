@@ -6,11 +6,21 @@ import * as yup from "yup";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 
+/**
+ * Champ personnalisé pour le mot de passe.
+ * - Inclut un bouton "afficher/masquer".
+ * - Évalue la force du mot de passe (longueur, majuscule, minuscule, chiffre, caractère spécial).
+ */
+
 function PasswordField({ register, error }) {
   const { t } = useTranslation();
   const [show, setShow] = useState(false)
   const [score, setScore] = useState(0)
 
+  /**
+   * Évalue la force du mot de passe en incrémentant un score.
+   * @param {string} v - Valeur saisie dans le champ mot de passe.
+   */
   const evalStrength = (v) => {
     let s = 0;
     if (v.length >= 8) s++;
@@ -50,6 +60,11 @@ function PasswordField({ register, error }) {
   )
 }
 
+/**
+ * Champ numérique personnalisé (NISS, INAMI, BCE, etc.).
+ * - Supprime les caractères non numériques.
+ * - Limite la saisie à un nombre de chiffres donné.
+ */
 function NumericField({ name, label, digits = 11, register, error }) {
   const { t } = useTranslation();
   return(
@@ -70,6 +85,13 @@ function NumericField({ name, label, digits = 11, register, error }) {
   )
 }
 
+/**
+ * Page d'inscription.
+ * - Contient deux sections : informations utilisateur et informations du cabinet.
+ * - Validation avec Yup et React Hook Form.
+ * - Soumission via Axios à l’API backend.
+ * - Redirige vers Stripe si `checkout_url` est fourni.
+ */
 export default function Register() {
   const { t } = useTranslation();
   const schema = yup.object().shape({
@@ -106,6 +128,13 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const [globalError, setGlobalError] = useState("")
   
+  /**
+   * Soumet le formulaire au backend.
+   * - Sauvegarde les tokens dans localStorage.
+   * - Définit l’en-tête Authorization par défaut pour Axios.
+   * - Redirige vers Stripe si `checkout_url` existe.
+   * - Sinon, redirige vers les paramètres d’abonnement.
+   */
   const onSubmit = async (form) => {
     setGlobalError("")
     setLoading(true)
@@ -123,6 +152,7 @@ export default function Register() {
       }
       navigate("/settings?tab=subscription")
     } catch (err) {
+      // Gestion des erreurs renvoyées par l’API
       const server= err?.response?.data
       if (server && typeof server === "object") {
         let hasField = false
